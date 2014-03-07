@@ -1,1 +1,3 @@
 For this project, you will design, implement, evaluate, and present an interactive multi-player game system. The game client, that is the interactive part, which the user sees and touches, must run in a web browser and be implemented using HTML5. Throughout this project we will focus on  human-centered iterative design methods. Light-weight prototyping and user studies will inform your design process. Through functional prototypes and further studies, you will learn about developing complex software while maintaining focus on user needs. You will present your final game design in a short video at the end of the semester, as well as in a formal final presentation.
+
+We will use the Quintus game engine and Node.js for sockets
