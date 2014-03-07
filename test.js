@@ -5,15 +5,9 @@ window.addEventListener("load",function() {
   //    with the necessary modules and controls
   //    to make things easy, we're going to fix this game at 640x480
   var Q = window.Q = Quintus({ development: true })
-          .include("Sprites, Scenes, Input, 2D")
-          .setup({  width:   800, // Set the default width to 800 pixels
-									  height:  600, // Set the default height to 600 pixels
-									  upsampleWidth:  420,  // Double the pixel density of the 
-									  upsampleHeight: 320,  // game if the w or h is 420x320
-									                        // or smaller (useful for retina phones)
-									  downsampleWidth: 1024, // Halve the pixel density if resolution
-									  downsampleHeight: 768  // is larger than or equal to 1024x768
-	});
+          .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI")
+          .setup({ maximize: true})
+          .controls(true)
 
   // 3. Add in the default keyboard controls
   //    along with joypad controls for touch
@@ -24,20 +18,54 @@ window.addEventListener("load",function() {
 	Q.gravityY = 0;
 	Q.gravityX = 0;
 
+  Q.animations("player", {
+    fire_right_running: {frames:[10,11], rate: 1/8},
+    fire_left_running: {frames:[22,23], rate: 1/8},
+    fire_front_running: {frames:[4,5], rate: 1/8},
+    fire_back_running: {frames:[16,17], rate: 1/8},
+    fire_right_standing: {frames:[9], rate: 1/5},
+    fire_left_standing: {frames:[21], rate: 1/5},
+    fire_front_standing: {frames:[3], rate: 1/5},
+    fire_back_standing: {frames:[15], rate: 1/5},
+    run_right: {frames:[6,7], rate: 1/8},
+    run_left: {frames:[18,19], rate: 1/8},
+    run_front: {frames:[0,1], rate: 1/8},
+    run_back: {frames:[12,13], rate: 1/8},
+    stand_right: {frames:[8], rate: 1/5},
+    stand_left: {frames:[20], rate: 1/5},
+    stand_front: {frames:[2], rate: 1/5},
+    stand_back: {frames:[14], rate: 1/5},
+    die:{frames:[24], rate: 1/5}
+  });
+
   // 4. Add in a basic sprite to get started
   Q.Sprite.extend("Player", {
     init: function(p) {
 
       this._super(p,{
-        sheet:"playerFaceFrontStanding"
+        sheet:"player",
+        sprite:"player",
+        
       });
 
-      this.add("2d");
-    }
+      this.add("2d, platformerControls, animation");
+    },
+      step: function(dt) {
+        if(this.p.vx > 0) {
+          this.play("run_right");
+        } else if(this.p.vx < 0) {
+          this.play("run_left");
+        }
+        else {
+          this.play("stand_" + this.p.direction); // stand_left or stand_right
+        }
+    },
   });
 
   // 5. Put together a minimal level
   Q.scene("level1",function(stage) {
+
+    stage.insert(new Q.Repeater({ asset: "Background3.png" }));
     var player = stage.insert(new Q.Player({ x: 48, y: 48 }));
     stage.add("viewport").follow(player);
 
@@ -45,7 +73,7 @@ window.addEventListener("load",function() {
 
   // 6. Load and start the level
   Q.load("sprites.png, sprites.json, level.json, Background3.png", function() {
-  	Q.sheet("Background3.png");
+  	Q.sheet("background, Background3.png");
     Q.compileSheets("sprites.png","sprites.json");
     Q.stageScene("level1");
   });
