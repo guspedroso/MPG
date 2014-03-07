@@ -29,7 +29,7 @@ window.addEventListener("load",function() {
     init: function(p) {
 
       this._super(p,{
-        sheet:"player front"
+        sheet:"playerFaceFrontStanding"
       });
 
       this.add("2d");
