@@ -47,18 +47,18 @@ window.addEventListener("load",function() {
         sprite:"player",     
       });
 
-      this.add("2d, platformerControls, animation");
+      this.add("2d, stepControls, animation");
     },
 
-      step: function(dt) {
-        if(this.p.vx > 0) {
+          step: function(dt) {
+        if(Q.inputs["right"]) {
           if (Q.inputs['action']) {
             this.play("fire_right_running");
           }
           else {
             this.play("run_right");
           }
-        } else if(this.p.vx < 0) {
+        } else if(Q.inputs["left"]) {
           if (Q.inputs['action']) {
             this.play("fire_left_running")
           }
@@ -83,10 +83,10 @@ window.addEventListener("load",function() {
         }
         else {
           if (Q.inputs['action']) {
-            this.play("fire_standing_" + this.p.direction); 
+            this.play("fire_standing_front"); 
           }
           else {
-            this.play("stand_" + this.p.direction); // stand_left or stand_right
+            this.play("stand_front");
           }
         }
     },
