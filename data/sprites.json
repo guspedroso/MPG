@@ -1,2 +1,2 @@
-{"player":{"sx":0,"sy":0,"cols":25,"tilew":75,"tileh":95,"frames":25},
+{"player":{"sx":0,"sy":0,"cols":25,"tilew":75,"tileh":100,"frames":25},
 "alien":{"sx":0,"sy":100,"cols":1,"tilew":85,"tileh":95,"frames":2}}
