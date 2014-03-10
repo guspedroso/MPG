@@ -14,6 +14,7 @@ window.addEventListener("load",function() {
   Q.input.keyboardControls();
   Q.input.joypadControls();
 
+
 	// Add these two lines below the controls
 	Q.gravityY = 0;
 	Q.gravityX = 0;
@@ -26,7 +27,7 @@ window.addEventListener("load",function() {
     fire_standing_right: {frames:[9], rate: 1/4},
     fire_standing_left: {frames:[21], rate: 1/4},
     fire_standing_front: {frames:[3], rate: 1/4},
-    fire_standing_back: {frames:[14], rate: 1/4},
+    fire_standing_back: {frames:[15], rate: 1/4},
     run_right: {frames:[7,6,8,6,7], rate: 1/10},
     run_left: {frames:[18,19,20,19,18], rate: 1/10},
     run_front: {frames:[0,1], rate: 1/4},
@@ -44,51 +45,72 @@ window.addEventListener("load",function() {
 
       this._super(p,{
         sheet:"player",
-        sprite:"player",     
+        sprite:"player",  
       });
 
       this.add("2d, stepControls, animation");
     },
 
-          step: function(dt) {
-        if(Q.inputs["right"]) {
-          if (Q.inputs['action']) {
-            this.play("fire_right_running");
-          }
-          else {
-            this.play("run_right");
-          }
-        } else if(Q.inputs["left"]) {
-          if (Q.inputs['action']) {
-            this.play("fire_left_running")
-          }
-          else {
-            this.play("run_left");
-          }
-        }
-        else if(Q.inputs['up']) {
-          if (Q.inputs['action']) {
-            this.play("fire_back_running")
-          }
-          else {
-            this.play("run_back");
-          }
-        } else if(Q.inputs['down']) {
-          if (Q.inputs['action']) {
-            this.play("fire_front_running")
-          }
-          else {
-            this.play("run_front");
-          }
+    step: function(dt) {
+      if(Q.inputs["right"]) {
+        this.p.direction = "right";
+        if (Q.inputs["action"]) {
+          this.play("fire_right_running");
         }
         else {
-          if (Q.inputs['action']) {
-            this.play("fire_standing_front"); 
+          this.play("run_right");
+        }
+      } else if(Q.inputs["left"]) {
+        this.p.direction = "left";
+        if (Q.inputs["action"]) {
+          this.play("fire_left_running")
+        }
+        else {
+          this.play("run_left");
+        }
+      }
+      else if(Q.inputs["up"]) {
+        this.p.direction = "up";
+        if (Q.inputs['action']) {
+          this.play("fire_back_running")
+        }
+        else {
+          this.play("run_back");
+        }
+      } else if(Q.inputs["down"]) {
+        this.p.direction = "down";
+        if (Q.inputs["action"]) {
+          this.play("fire_front_running")
+        }
+        else {
+          this.play("run_front");
+        }
+      }
+      else {
+        if (Q.inputs["action"]) {
+          if (this.p.direction == "right") {
+            this.play("fire_standing_right"); 
+          } else if (this.p.direction == "left") {
+            this.play("fire_standing_left");
+          } else if (this.p.direction == "up") {
+            this.play("fire_standing_back");
+          } else if (this.p.direction == "down") {
+            this.play("fire_standing_front");
           }
-          else {
+          
+        }
+        else {
+          if (this.p.direction == "right") {
+            this.play("stand_right"); 
+          } else if (this.p.direction == "left") {
+            this.play("stand_left");
+          } else if (this.p.direction == "up") {
+            this.play("stand_back");
+          } else if (this.p.direction == "down") {
             this.play("stand_front");
           }
         }
+      }
     },
   });
 
