@@ -7,13 +7,7 @@ window.addEventListener("load",function() {
 
   //Add in the default keyboard controls
   //along with joypad controls for touch
-  Q.input.keyboardControls({
-	LEFT: "goLeft",
-	W: "goUp",
-	A: "goLeft2",
-	S: "goDown",
-	D: "goRight"
-	});
+  Q.input.keyboardControls();
   Q.input.joypadControls();
 
 	// Set the gravity to zero since this is a top down game
@@ -121,7 +115,7 @@ window.addEventListener("load",function() {
     //step function for controlling how this sprite will move
     step: function(dt) {
       //Grab the input and determine which animation to play
-      if(Q.inputs["goRight"]) {
+      if(Q.inputs["right"]) {
         //set the direction of the player depending on the input
         this.p.direction = "right";
 
@@ -133,7 +127,7 @@ window.addEventListener("load",function() {
         else {
           this.play("run_right");
         }
-      } else if(Q.inputs["goLeft"]) {
+      } else if(Q.inputs["left"]) {
         this.p.direction = "left";
         if (Q.inputs["fire"]) {
           this.play("fire_left_running")
@@ -142,7 +136,7 @@ window.addEventListener("load",function() {
           this.play("run_left");
         }
       }
-      else if(Q.inputs["goUp"]) {
+      else if(Q.inputs["up"]) {
         this.p.direction = "up";
         if (Q.inputs['fire']) {
           this.play("fire_back_running")
@@ -150,7 +144,7 @@ window.addEventListener("load",function() {
         else {
           this.play("run_back");
         }
-      } else if(Q.inputs["goDown"]) {
+      } else if(Q.inputs["down"]) {
         this.p.direction = "down";
         if (Q.inputs["fire"]) {
           this.play("fire_front_running")
