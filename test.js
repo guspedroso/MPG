@@ -1,23 +1,20 @@
-// 1. Wait for the onload event
 window.addEventListener("load",function() {
 
-  // 2. Set up a basic Quintus object
-  //    with the necessary modules and controls
-  //    to make things easy, we're going to fix this game at 640x480
   var Q = window.Q = Quintus({ development: true })
           .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI")
           .setup({ width: 720, height: 480})
           .controls()
 
-  // 3. Add in the default keyboard controls
-  //    along with joypad controls for touch
+  //Add in the default keyboard controls
+  //along with joypad controls for touch
   Q.input.keyboardControls();
   Q.input.joypadControls();
 
-	// Add these two lines below the controls
+	// Set the gravity to zero since this is a top down game
 	Q.gravityY = 0;
 	Q.gravityX = 0;
 
+  //Set up the animations for the player, reading frames from sprites.png
   Q.animations("player", {
     fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
     fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
@@ -38,6 +35,7 @@ window.addEventListener("load",function() {
     die:{frames:[24], rate: 1/5}
   });
 
+  //create the bullet object
   Q.Sprite.extend("Bullet", {
     init: function(p) {
       this._super(p,{
@@ -48,6 +46,21 @@ window.addEventListener("load",function() {
     }
   });
 
+  //create the enemy object
+  Q.Sprite.extend("Enemy", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"enemy",
+        sprite:"enemy",
+      });
+      this.add("2d, animation");
+    }
+
+    //Add the ai for the enemy *****************
+
+  });
+
+  //Create the player object
   Q.Sprite.extend("Player", {
     init: function(p) {
 
@@ -55,31 +68,59 @@ window.addEventListener("load",function() {
         sheet:"player",
         sprite:"player",
         stepDelay: 0.1,
-        points: [ [0, -10 ], [ 5, 10 ], [ -5,10 ]],
-        bulletSpeed: 500,
+        points: [ [0, -20 ], [ 30, 20 ], [ -30, 20 ]], //fix the points 
+        bulletSpeed: 700,
       });
 
       this.add("2d, stepControls, animation");
 
-      this.on("action",this,"fireIt");
+      Q.input.on("fire",this,"fire");
     },
     
-    fireIt: function() {
+    fire: function() {
       var p = this.p;
-      var dx =  Math.sin(p.angle * Math.PI / 180),
-          dy = -Math.cos(p.angle * Math.PI / 180);
+      var angle, x, y;
+
+      //See what direction the player is in and set the bullet to go that way
+      if (p.direction == "left") {
+        angle = -90;
+        x = this.p.x - 35;
+        y = this.p.y + 2;
+      } else if (p.direction == "right") {
+        angle = 90;
+        x = this.p.x + 38;
+        y = this.p.y + 2;
+      } else if (p.direction == "up") {
+        angle = 0;
+        x = this.p.x - 8;
+        y = this.p.y - 40;
+      } else if (p.direction == "down") {
+        angle = 180;
+        x = this.p.x + 10;
+        y = this.p.y + 40;
+      }
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+
+      //Insert the bullet into the stage
       this.stage.insert(
-        new Q.Bullet({ x: this.c.points[0][0], 
-                       y: this.c.points[0][1],
+        new Q.Bullet({ x: x, 
+                       y: y,
                        vx: dx * p.bulletSpeed,
                        vy: dy * p.bulletSpeed
                 })
       );
     },
-  
+    
+    //step function for controlling how this sprite will move
     step: function(dt) {
+      //Grab the input and determine which animation to play
       if(Q.inputs["right"]) {
+        //set the direction of the player depending on the input
         this.p.direction = "right";
+
+        //play the fire animation if input reads that the player is firing,
+        //else just play the running animation
         if (Q.inputs["fire"]) {
           this.play("fire_right_running");
         }
@@ -140,9 +181,14 @@ window.addEventListener("load",function() {
     },
   });
 
-  // 5. Put together a minimal level
-  Q.scene("level1",function(stage) {
+  //Main game screen
+  Q.scene("mainMenu",function(stage) {
+    //Set up the main screen and buttons
+  });
 
+  //First level
+  Q.scene("level1",function(stage) {
+    //Change this to be the backround and not repeater *************
     stage.insert(new Q.Repeater({ asset: "Background3.png" }));
     var player = stage.insert(new Q.Player({ x: 400, y: 400 }));
     stage.add("viewport").follow(player);
