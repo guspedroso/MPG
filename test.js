@@ -7,7 +7,13 @@ window.addEventListener("load",function() {
 
   //Add in the default keyboard controls
   //along with joypad controls for touch
-  Q.input.keyboardControls();
+  //attempt to change key bindings
+  Q.input.keyboardControls({
+  W: "up",
+  A: "left",
+  S: "down",
+  D: "right"
+  });
   Q.input.joypadControls();
 
 	// Set the gravity to zero since this is a top down game
