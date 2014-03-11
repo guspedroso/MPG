@@ -14,24 +14,23 @@ window.addEventListener("load",function() {
   Q.input.keyboardControls();
   Q.input.joypadControls();
 
-
 	// Add these two lines below the controls
 	Q.gravityY = 0;
 	Q.gravityX = 0;
 
   Q.animations("player", {
-    fire_right_running: {frames:[10,11,9,11,10], rate: 1/10},
-    fire_left_running: {frames:[23,22,21,22,23], rate: 1/10},
+    fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
+    fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
     fire_front_running: {frames:[4,5], rate: 1/4},
     fire_back_running: {frames:[16,17], rate: 1/4},
     fire_standing_right: {frames:[9], rate: 1/4},
     fire_standing_left: {frames:[21], rate: 1/4},
     fire_standing_front: {frames:[3], rate: 1/4},
     fire_standing_back: {frames:[15], rate: 1/4},
-    run_right: {frames:[7,6,8,6,7], rate: 1/10},
-    run_left: {frames:[18,19,20,19,18], rate: 1/10},
-    run_front: {frames:[0,1], rate: 1/4},
-    run_back: {frames:[12,13], rate: 1/4},
+    run_right: {frames:[7,6,8,6,7], rate: 1/15},
+    run_left: {frames:[18,19,20,19,18], rate: 1/15},
+    run_front: {frames:[0,1], rate: 1/5},
+    run_back: {frames:[12,13], rate: 1/5},
     stand_right: {frames:[8], rate: 1/5},
     stand_left: {frames:[20], rate: 1/5},
     stand_front: {frames:[2], rate: 1/5},
@@ -39,22 +38,49 @@ window.addEventListener("load",function() {
     die:{frames:[24], rate: 1/5}
   });
 
-  // 4. Add in a basic sprite to get started
+  Q.Sprite.extend("Bullet", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"bullet",
+        sprite:"bullet",
+      });
+      this.add("2d");
+    }
+  });
+
   Q.Sprite.extend("Player", {
     init: function(p) {
 
       this._super(p,{
         sheet:"player",
-        sprite:"player",  
+        sprite:"player",
+        stepDelay: 0.1,
+        points: [ [0, -10 ], [ 5, 10 ], [ -5,10 ]],
+        bulletSpeed: 500,
       });
 
       this.add("2d, stepControls, animation");
-    },
 
+      this.on("action",this,"fireIt");
+    },
+    
+    fireIt: function() {
+      var p = this.p;
+      var dx =  Math.sin(p.angle * Math.PI / 180),
+          dy = -Math.cos(p.angle * Math.PI / 180);
+      this.stage.insert(
+        new Q.Bullet({ x: this.c.points[0][0], 
+                       y: this.c.points[0][1],
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
+    },
+  
     step: function(dt) {
       if(Q.inputs["right"]) {
         this.p.direction = "right";
-        if (Q.inputs["action"]) {
+        if (Q.inputs["fire"]) {
           this.play("fire_right_running");
         }
         else {
@@ -62,7 +88,7 @@ window.addEventListener("load",function() {
         }
       } else if(Q.inputs["left"]) {
         this.p.direction = "left";
-        if (Q.inputs["action"]) {
+        if (Q.inputs["fire"]) {
           this.play("fire_left_running")
         }
         else {
@@ -71,7 +97,7 @@ window.addEventListener("load",function() {
       }
       else if(Q.inputs["up"]) {
         this.p.direction = "up";
-        if (Q.inputs['action']) {
+        if (Q.inputs['fire']) {
           this.play("fire_back_running")
         }
         else {
@@ -79,7 +105,7 @@ window.addEventListener("load",function() {
         }
       } else if(Q.inputs["down"]) {
         this.p.direction = "down";
-        if (Q.inputs["action"]) {
+        if (Q.inputs["fire"]) {
           this.play("fire_front_running")
         }
         else {
@@ -87,7 +113,7 @@ window.addEventListener("load",function() {
         }
       }
       else {
-        if (Q.inputs["action"]) {
+        if (Q.inputs["fire"]) {
           if (this.p.direction == "right") {
             this.play("fire_standing_right"); 
           } else if (this.p.direction == "left") {
