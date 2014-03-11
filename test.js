@@ -9,10 +9,10 @@ window.addEventListener("load",function() {
   //along with joypad controls for touch
   //attempt to change key bindings
   Q.input.keyboardControls({
-  W: 'up',
-  A: 'left',
-  S: 'down',
-  D: 'right'
+  W: "up",
+  A: "left",
+  S: "down",
+  D: "right"
   });
   Q.input.joypadControls();
 
