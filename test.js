@@ -61,11 +61,14 @@ window.addEventListener("load",function() {
 
     collision: function(col) {
       var objP = col.obj.p;
+      this.destroy();
+      /*
       if (objP.type == SPRITE_ENEMY) {
         col.obj.destroy();
         this.destroy();
 
       };
+      */
     }
   });
 
@@ -75,11 +78,23 @@ window.addEventListener("load",function() {
       this._super(p,{
         sheet:"enemy",
         sprite:"enemy",
+        life: 4, //change the life to something reasonable once we get things going
         type: SPRITE_ENEMY,
         collisionMask: SPRITE_BULLET | SPRITE_TILES | SPRITE_PLAYER
       });
       this.add("2d, animation");
+      this.on("hit.sprite",this,"hit");
+    },
+
+    hit: function(col) {
+    if(col.obj.isA("Bullet")) {
+      this.p.life--;
+      if (this.p.life == 0) {
+        this.destroy();
+      }
     }
+
+  }
 
   });
 
