@@ -64,6 +64,7 @@ window.addEventListener("load",function() {
       if (objP.type == SPRITE_ENEMY) {
         col.obj.destroy();
         this.destroy();
+
       };
     }
   });
