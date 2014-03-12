@@ -2,7 +2,13 @@ window.addEventListener("load",function() {
 
   var Q = window.Q = Quintus({ development: true })
           .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI")
-          .setup({ width: 720, height: 480})
+          .setup({width:   800, // Set the default width to 800 pixels
+                  height:  600, // Set the default height to 600 pixels
+                  upsampleWidth:  420,  // Double the pixel density of the 
+                  upsampleHeight: 320,  // game if the w or h is 420x320
+                                        // or smaller (useful for retina phones)
+                  downsampleWidth: 1024, // Halve the pixel density if resolution
+                  downsampleHeight: 768})  // is larger than or equal to 1024x768)
           .controls()
 
   //Add in the default keyboard controls
@@ -13,6 +19,11 @@ window.addEventListener("load",function() {
 	// Set the gravity to zero since this is a top down game
 	Q.gravityY = 0;
 	Q.gravityX = 0;
+
+  var SPRITE_PLAYER = 1;
+  var SPRITE_TILES = 2;
+  var SPRITE_ENEMY = 4;
+  var SPRITE_BULLET = 8;
 
   //Set up the animations for the player, reading frames from sprites.png
   Q.animations("player", {
@@ -41,8 +52,19 @@ window.addEventListener("load",function() {
       this._super(p,{
         sheet:"bullet",
         sprite:"bullet",
+        type: SPRITE_BULLET,
+        collisionMask: SPRITE_ENEMY
       });
       this.add("2d");
+      this.on("hit.sprite",this,"collision");
+    },
+
+    collision: function(col) {
+      var objP = col.obj.p;
+      if (objP.type == SPRITE_ENEMY) {
+        col.obj.destroy();
+        this.destroy();
+      };
     }
   });
 
@@ -52,11 +74,11 @@ window.addEventListener("load",function() {
       this._super(p,{
         sheet:"enemy",
         sprite:"enemy",
+        type: SPRITE_ENEMY,
+        collisionMask: SPRITE_BULLET | SPRITE_TILES | SPRITE_PLAYER
       });
       this.add("2d, animation");
     }
-
-    //Add the ai for the enemy *****************
 
   });
 
@@ -67,9 +89,11 @@ window.addEventListener("load",function() {
       this._super(p,{
         sheet:"player",
         sprite:"player",
+        type: SPRITE_PLAYER,
         stepDelay: 0.1,
-        points: [ [0, -20 ], [ 30, 20 ], [ -30, 20 ]], //fix the points 
+        points: [ [0, -20 ], [ 30, 20 ], [ -30, 20 ]],
         bulletSpeed: 700,
+        collisionMask: SPRITE_TILES | SPRITE_ENEMY
       });
 
       this.add("2d, stepControls, animation");
@@ -93,7 +117,7 @@ window.addEventListener("load",function() {
       } else if (p.direction == "up") {
         angle = 0;
         x = this.p.x - 8;
-        y = this.p.y - 40;
+        y = this.p.y - 45;
       } else if (p.direction == "down") {
         angle = 180;
         x = this.p.x + 10;
@@ -188,15 +212,18 @@ window.addEventListener("load",function() {
 
   //First level
   Q.scene("level1",function(stage) {
+
     //Change this to be the backround and not repeater *************
     stage.insert(new Q.Repeater({ asset: "Background3.png" }));
     var player = stage.insert(new Q.Player({ x: 400, y: 400 }));
+    var enemy = stage.insert(new Q.Enemy({ x: 420, y: 420 }));
     stage.add("viewport").follow(player);
 
   });
 
   // 6. Load and start the level
   Q.load("sprites.png, sprites.json, level.json, Background3.png", function() {
+    //Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 });
   	Q.sheet("background, Background3.png");
     Q.compileSheets("sprites.png","sprites.json");
     Q.stageScene("level1");
