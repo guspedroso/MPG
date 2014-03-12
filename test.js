@@ -24,6 +24,7 @@ window.addEventListener("load",function() {
   var SPRITE_TILES = 2;
   var SPRITE_ENEMY = 4;
   var SPRITE_BULLET = 8;
+  var SPRITE_LIFE = 16;
 
   //Set up the animations for the player, reading frames from sprites.png
   Q.animations("player", {
@@ -61,7 +62,10 @@ window.addEventListener("load",function() {
 
     collision: function(col) {
       var objP = col.obj.p;
-      this.destroy();
+      if (objP.type = SPRITE_ENEMY) {
+        this.destroy();
+      };
+      
       /*
       if (objP.type == SPRITE_ENEMY) {
         col.obj.destroy();
@@ -69,6 +73,28 @@ window.addEventListener("load",function() {
 
       };
       */
+    }
+  });
+
+    //create the life object
+  Q.Sprite.extend("Life", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"life",
+        sprite:"life",
+        type: SPRITE_LIFE,
+        collisionMask: SPRITE_PLAYER
+      });
+      this.add("2d");
+      this.on("hit.sprite",this,"collision");
+    },
+
+    //If the life collides with a player, destroy it, keep it on map otherwise
+    collision: function(col) {
+      var objP = col.obj.p;
+      if (objP.type == SPRITE_PLAYER) {
+        this.destroy();
+      };
     }
   });
 
@@ -107,6 +133,7 @@ window.addEventListener("load",function() {
         sprite:"player",
         type: SPRITE_PLAYER,
         stepDelay: 0.1,
+        life: 10,
         points: [ [0, -20 ], [ 30, 20 ], [ -30, 20 ]],
         bulletSpeed: 700,
         collisionMask: SPRITE_TILES | SPRITE_ENEMY
@@ -115,8 +142,15 @@ window.addEventListener("load",function() {
       this.add("2d, stepControls, animation");
 
       Q.input.on("fire",this,"fire");
+      this.on("hit.sprite",this,"hit");
     },
     
+    hit: function(col) {
+      if(col.obj.isA("Life")) {
+        this.p.life++;
+      }
+    },
+
     fire: function() {
       var p = this.p;
       var angle, x, y;
@@ -232,7 +266,7 @@ window.addEventListener("load",function() {
     //Change this to be the backround and not repeater *************
     stage.insert(new Q.Repeater({ asset: "Background3.png" }));
     var player = stage.insert(new Q.Player({ x: 400, y: 400 }));
-    var enemy = stage.insert(new Q.Enemy({ x: 420, y: 420 }));
+    var enemy = stage.insert(new Q.Enemy({ x: 440, y: 440 }));
     stage.add("viewport").follow(player);
 
   });
