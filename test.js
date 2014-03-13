@@ -65,14 +65,6 @@ window.addEventListener("load",function() {
       if (objP.type = SPRITE_ENEMY) {
         this.destroy();
       };
-      
-      /*
-      if (objP.type == SPRITE_ENEMY) {
-        col.obj.destroy();
-        this.destroy();
-
-      };
-      */
     }
   });
 
@@ -116,6 +108,7 @@ window.addEventListener("load",function() {
     if(col.obj.isA("Bullet")) {
       this.p.life--;
       if (this.p.life == 0) {
+        this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
         this.destroy();
       }
     }
@@ -133,7 +126,7 @@ window.addEventListener("load",function() {
         sprite:"player",
         type: SPRITE_PLAYER,
         stepDelay: 0.1,
-        life: 10,
+        life: 4,
         points: [ [0, -20 ], [ 30, 20 ], [ -30, 20 ]],
         bulletSpeed: 700,
         collisionMask: SPRITE_TILES | SPRITE_ENEMY

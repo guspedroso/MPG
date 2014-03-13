@@ -1,4 +1,4 @@
 {"player":{"sx":0,"sy":0,"cols":25,"tilew":75,"tileh":100,"frames":25},
-"enemy":{"sx":0,"sy":100,"cols":2,"tilew":75,"tileh":100,"frames":2},
+"enemy":{"sx":0,"sy":105,"cols":2,"tilew":75,"tileh":100,"frames":2},
 "bullet":{"sx":0,"sy":210,"cols":1,"tilew":18,"tileh":20,"frames":1},
 "life":{"sx":15,"sy":210,"cols":1,"tilew":23,"tileh":23,"frames":1}}
