@@ -20,11 +20,13 @@ window.addEventListener("load",function() {
 	Q.gravityY = 0;
 	Q.gravityX = 0;
 
+  var SPRITE_NONE = 0;
   var SPRITE_PLAYER = 1;
   var SPRITE_TILES = 2;
   var SPRITE_ENEMY = 4;
-  var SPRITE_BULLET = 8;
+  var SPRITE_PLAYER_BULLET = 8;
   var SPRITE_LIFE = 16;
+  var SPRITE_ENEMY_BULLET = 32;
 
   //Set up the animations for the player, reading frames from sprites.png
   Q.animations("player", {
@@ -48,27 +50,50 @@ window.addEventListener("load",function() {
   });
 
   //create the bullet object
-  Q.Sprite.extend("Bullet", {
+  Q.Sprite.extend("PlayerBullet", {
     init: function(p) {
       this._super(p,{
-        sheet:"bullet",
-        sprite:"bullet",
-        type: SPRITE_BULLET,
+        sheet:"playerBullet",
+        sprite:"playerBullet",
+        type: SPRITE_PLAYER_BULLET,
         collisionMask: SPRITE_ENEMY
       });
       this.add("2d");
       this.on("hit.sprite",this,"collision");
     },
 
+    //destory the bullet if it hits an enemy or player
     collision: function(col) {
       var objP = col.obj.p;
-      if (objP.type = SPRITE_ENEMY) {
+      if (objP.type == SPRITE_ENEMY) {
         this.destroy();
       };
     }
   });
 
-    //create the life object
+  //create the bullet object
+  Q.Sprite.extend("EnemyBullet", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"EnemyBullet",
+        sprite:"EnemyBullet",
+        type: SPRITE_ENEMY_BULLET,
+        collisionMask: SPRITE_PLAYER
+      });
+      this.add("2d");
+      this.on("hit.sprite",this,"collision");
+    },
+
+    //destory the bullet if it hits an enemy or player
+    collision: function(col) {
+      var objP = col.obj.p;
+      if (objP.type == SPRITE_PLAYER) {
+        this.destroy();
+      };
+    }
+  });
+
+  //create the life object
   Q.Sprite.extend("Life", {
     init: function(p) {
       this._super(p,{
@@ -90,6 +115,62 @@ window.addEventListener("load",function() {
     }
   });
 
+  //A.I. controls for the enemy
+  Q.component("enemyControls", {
+    defaults: { speed: 100, direction: 'left', switchPercent: 2 },
+
+    added: function() {
+      var p = this.entity.p;
+
+      Q._defaults(p,this.defaults);
+
+      this.entity.on("step",this,"step");
+      this.entity.on('hit',this,"changeDirection");
+    },
+
+    step: function(dt) {
+      var p = this.entity.p;
+
+      // Randomly try to switch directions
+      if(Math.random() < p.switchPercent / 100) {
+        this.tryDirection();
+      }
+
+      // Add velocity in the direction we are currently heading.
+      switch(p.direction) {
+        case "left": p.vx = -p.speed; break;
+        case "right":p.vx = p.speed; break;
+        case "up":   p.vy = -p.speed; break;
+        case "down": p.vy = p.speed; break;
+      }
+    },
+
+    // Try a random direction 90 degrees away from the 
+    // current direction of movement
+    tryDirection: function() {
+      var p = this.entity.p; 
+      var from = p.direction;
+      if(p.vy != 0 && p.vx == 0) {
+        p.direction = Math.random() < 0.5 ? 'left' : 'right';
+      } else if(p.vx != 0 && p.vy == 0) {
+        p.direction = Math.random() < 0.5 ? 'up' : 'down';
+      }
+    },
+
+    // Called every collision, if we're stuck,
+    // try moving in a direction 90 away from the normal
+    changeDirection: function(collision) {
+      var p = this.entity.p;
+      if(p.vx == 0 && p.vy == 0) {
+        if(collision.normalY) {
+          p.direction = Math.random() < 0.5 ? 'left' : 'right';
+        } else if(collision.normalX) {
+          p.direction = Math.random() < 0.5 ? 'up' : 'down';
+        }
+      }
+    }
+  });
+
   //create the enemy object
   Q.Sprite.extend("Enemy", {
     init: function(p) {
@@ -98,23 +179,23 @@ window.addEventListener("load",function() {
         sprite:"enemy",
         life: 4, //change the life to something reasonable once we get things going
         type: SPRITE_ENEMY,
-        collisionMask: SPRITE_BULLET | SPRITE_TILES | SPRITE_PLAYER
+        collisionMask: SPRITE_PLAYER_BULLET | SPRITE_TILES | SPRITE_PLAYER
       });
-      this.add("2d, animation");
+      this.add("2d, enemyControls, animation");
       this.on("hit.sprite",this,"hit");
     },
 
     hit: function(col) {
-    if(col.obj.isA("Bullet")) {
-      this.p.life--;
-      if (this.p.life == 0) {
-        this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
-        this.destroy();
+      if(col.obj.isA("PlayerBullet")) {
+        this.p.life--;
+        if (this.p.life == 0) {
+          this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
+          this.stage.insert(new Q.Enemy({ x: this.p.x + 100, y: this.p.y + 100}));
+          this.stage.insert(new Q.Enemy({ x: this.p.x - 100, y: this.p.y - 100}));
+          this.destroy();
+        }
       }
     }
-
-  }
-
   });
 
   //Create the player object
@@ -126,10 +207,9 @@ window.addEventListener("load",function() {
         sprite:"player",
         type: SPRITE_PLAYER,
         stepDelay: 0.1,
-        life: 4,
-        points: [ [0, -20 ], [ 30, 20 ], [ -30, 20 ]],
+        life: 10,
         bulletSpeed: 700,
-        collisionMask: SPRITE_TILES | SPRITE_ENEMY
+        collisionMask: SPRITE_TILES | SPRITE_ENEMY | SPRITE_LIFE | SPRITE_ENEMY_BULLET
       });
 
       this.add("2d, stepControls, animation");
@@ -139,9 +219,19 @@ window.addEventListener("load",function() {
     },
     
     hit: function(col) {
+      var red;
       if(col.obj.isA("Life")) {
         this.p.life++;
       }
+      else if(col.obj.isA("EnemyBullet")) {
+        this.p.life--;
+        //red = this.stage.insert(new Q.Repeater({ asset: "redScreen.png" }));
+        //this.stage.remove(red);
+      }
+
+      if (this.p.life == 0) {
+        this.destroy();
+      };
     },
 
     fire: function() {
@@ -151,27 +241,27 @@ window.addEventListener("load",function() {
       //See what direction the player is in and set the bullet to go that way
       if (p.direction == "left") {
         angle = -90;
-        x = this.p.x - 35;
+        x = this.p.x - 47;
         y = this.p.y + 2;
       } else if (p.direction == "right") {
         angle = 90;
-        x = this.p.x + 38;
+        x = this.p.x + 47;
         y = this.p.y + 2;
       } else if (p.direction == "up") {
         angle = 0;
         x = this.p.x - 8;
-        y = this.p.y - 45;
+        y = this.p.y - 60;
       } else if (p.direction == "down") {
         angle = 180;
         x = this.p.x + 10;
-        y = this.p.y + 40;
+        y = this.p.y + 60;
       }
       var dx =  Math.sin(angle * Math.PI / 180),
           dy = -Math.cos(angle * Math.PI / 180);
 
       //Insert the bullet into the stage
       this.stage.insert(
-        new Q.Bullet({ x: x, 
+        new Q.PlayerBullet({ x: x, 
                        y: y,
                        vx: dx * p.bulletSpeed,
                        vy: dy * p.bulletSpeed
@@ -255,19 +345,55 @@ window.addEventListener("load",function() {
 
   //First level
   Q.scene("level1",function(stage) {
+    stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level1Collision.json', sheet: 'tiles', type: SPRITE_TILES }));
+    stage.insert(new Q.TileLayer({ dataAsset: 'level1Background.json', sheet: 'tiles', type: SPRITE_NONE }));
+    
 
-    //Change this to be the backround and not repeater *************
-    stage.insert(new Q.Repeater({ asset: "Background3.png" }));
+    //stage.insert(new Q.Repeater({ asset: "Background3.png" }));
     var player = stage.insert(new Q.Player({ x: 400, y: 400 }));
-    var enemy = stage.insert(new Q.Enemy({ x: 440, y: 440 }));
+    var enemy = stage.insert(new Q.Enemy({ x: 600, y: 600 }));
+    //var bullet = stage.insert(new Q.EnemyBullet({ x: 800, y: 800 }));
+    
+    //Set viewport to follow player
     stage.add("viewport").follow(player);
+    
 
+    //We can change this to call different scenes when we create more
+    //Instead of just calling the endgame scene
+    /*
+    //When the enemies have been defeated display label
+    stage.on("step",function() {
+          if(Q("Enemy").length == 0 && !Q.stage(1)) { 
+            Q.stageScene("endGame",1, { label: "You Win!" }); 
+          }
+        });
+    */
   });
 
-  // 6. Load and start the level
-  Q.load("sprites.png, sprites.json, level.json, Background3.png", function() {
-    //Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 });
-  	Q.sheet("background, Background3.png");
+  //Scene that occurs after game ends
+  Q.scene('endGame',function(stage) {
+  var container = stage.insert(new Q.UI.Container({
+    x: Q.width/2, y: Q.height/2, fill: "rgba(255,255,255,0.5)"
+    }));
+
+    var button = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
+                                                   label: "Play Again" }))         
+    var label = container.insert(new Q.UI.Text({x:10, y: -10 - button.p.h, 
+                                 label: stage.options.label }));
+    // When the button is clicked, clear all the stages
+    // and restart the game.
+    button.on("click",function() {
+      Q.clearStages();
+      Q.stageScene('level1');
+    });
+
+    // Expand the container to visibily fit it's contents
+    container.fit(20);
+  });
+
+  //Load and start the level
+  Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png, redScreen.png, Background3.png", function() {
+    Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
     Q.compileSheets("sprites.png","sprites.json");
     Q.stageScene("level1");
   });
