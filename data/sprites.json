@@ -2,4 +2,9 @@
 "enemy":{"sx":0,"sy":105,"cols":2,"tilew":75,"tileh":100,"frames":2},
 "playerBullet":{"sx":0,"sy":210,"cols":1,"tilew":18,"tileh":20,"frames":1},
 "life":{"sx":15,"sy":210,"cols":1,"tilew":20,"tileh":20,"frames":1},
-"enemyBullet":{"sx":35,"sy":210,"cols":1,"tilew":18,"tileh":20,"frames":1}}
+"enemyBullet":{"sx":35,"sy":210,"cols":1,"tilew":18,"tileh":20,"frames":1},
+"level1Trees1":{"sx":0,"sy":240,"cols":1,"tilew":972,"tileh":227,"frames":1},
+"level1Trees2":{"sx":0,"sy":467,"cols":1,"tilew":600,"tileh":160,"frames":1},
+"level1Trees3":{"sx":0,"sy":630,"cols":1,"tilew":180,"tileh":120,"frames":1},
+"level1Trees4":{"sx":0,"sy":760,"cols":1,"tilew":290,"tileh":125,"frames":1},
+"level1Trees5":{"sx":0,"sy":885,"cols":1,"tilew":240,"tileh":400,"frames":1}}

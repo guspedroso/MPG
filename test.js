@@ -2,13 +2,7 @@ window.addEventListener("load",function() {
 
   var Q = window.Q = Quintus({ development: true })
           .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI")
-          .setup({width:   800, // Set the default width to 800 pixels
-                  height:  600, // Set the default height to 600 pixels
-                  upsampleWidth:  420,  // Double the pixel density of the 
-                  upsampleHeight: 320,  // game if the w or h is 420x320
-                                        // or smaller (useful for retina phones)
-                  downsampleWidth: 1024, // Halve the pixel density if resolution
-                  downsampleHeight: 768})  // is larger than or equal to 1024x768)
+          .setup({ maximize:true })  // is larger than or equal to 1024x768)
           .controls()
 
   //Add in the default keyboard controls
@@ -27,26 +21,62 @@ window.addEventListener("load",function() {
   var SPRITE_PLAYER_BULLET = 8;
   var SPRITE_LIFE = 16;
   var SPRITE_ENEMY_BULLET = 32;
+  var SPRITE_TREES = 64;
 
-  //Set up the animations for the player, reading frames from sprites.png
-  Q.animations("player", {
-    fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
-    fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
-    fire_front_running: {frames:[4,5], rate: 1/4},
-    fire_back_running: {frames:[16,17], rate: 1/4},
-    fire_standing_right: {frames:[9], rate: 1/4},
-    fire_standing_left: {frames:[21], rate: 1/4},
-    fire_standing_front: {frames:[3], rate: 1/4},
-    fire_standing_back: {frames:[15], rate: 1/4},
-    run_right: {frames:[7,6,8,6,7], rate: 1/15},
-    run_left: {frames:[18,19,20,19,18], rate: 1/15},
-    run_front: {frames:[0,1], rate: 1/5},
-    run_back: {frames:[12,13], rate: 1/5},
-    stand_right: {frames:[8], rate: 1/5},
-    stand_left: {frames:[20], rate: 1/5},
-    stand_front: {frames:[2], rate: 1/5},
-    stand_back: {frames:[14], rate: 1/5},
-    die:{frames:[24], rate: 1/5}
+    //create the bullet object
+  Q.Sprite.extend("Level1Trees1", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"level1Trees1",
+        sprite:"level1Trees1",
+        type: SPRITE_TREES
+      });
+      this.add("2d");
+    }
+  });
+
+  Q.Sprite.extend("Level1Trees2", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"level1Trees2",
+        sprite:"level1Trees2",
+        type: SPRITE_TREES
+      });
+      this.add("2d");
+    }
+  });
+
+  Q.Sprite.extend("Level1Trees3", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"level1Trees3",
+        sprite:"level1Trees3",
+        type: SPRITE_TREES
+      });
+      this.add("2d");
+    }
+  });
+
+  Q.Sprite.extend("Level1Trees4", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"level1Trees4",
+        sprite:"level1Trees4",
+        type: SPRITE_TREES
+      });
+      this.add("2d");
+    }
+  });
+
+  Q.Sprite.extend("Level1Trees5", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"level1Trees5",
+        sprite:"level1Trees5",
+        type: SPRITE_TREES
+      });
+      this.add("2d");
+    }
   });
 
   //create the bullet object
@@ -75,8 +105,8 @@ window.addEventListener("load",function() {
   Q.Sprite.extend("EnemyBullet", {
     init: function(p) {
       this._super(p,{
-        sheet:"EnemyBullet",
-        sprite:"EnemyBullet",
+        sheet:"enemyBullet",
+        sprite:"enemyBullet",
         type: SPRITE_ENEMY_BULLET,
         collisionMask: SPRITE_PLAYER
       });
@@ -190,12 +220,31 @@ window.addEventListener("load",function() {
         this.p.life--;
         if (this.p.life == 0) {
           this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
-          this.stage.insert(new Q.Enemy({ x: this.p.x + 100, y: this.p.y + 100}));
-          this.stage.insert(new Q.Enemy({ x: this.p.x - 100, y: this.p.y - 100}));
           this.destroy();
         }
       }
     }
+  });
+
+  //Set up the animations for the player, reading frames from sprites.png
+  Q.animations("player", {
+    fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
+    fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
+    fire_front_running: {frames:[4,5], rate: 1/4},
+    fire_back_running: {frames:[16,17], rate: 1/4},
+    fire_standing_right: {frames:[9], rate: 1/4},
+    fire_standing_left: {frames:[21], rate: 1/4},
+    fire_standing_front: {frames:[3], rate: 1/4},
+    fire_standing_back: {frames:[15], rate: 1/4},
+    run_right: {frames:[7,6,8,6,7], rate: 1/15},
+    run_left: {frames:[18,19,20,19,18], rate: 1/15},
+    run_front: {frames:[0,1], rate: 1/5},
+    run_back: {frames:[12,13], rate: 1/5},
+    stand_right: {frames:[8], rate: 1/5},
+    stand_left: {frames:[20], rate: 1/5},
+    stand_front: {frames:[2], rate: 1/5},
+    stand_back: {frames:[14], rate: 1/5},
+    die:{frames:[24], rate: 1/5}
   });
 
   //Create the player object
@@ -225,7 +274,7 @@ window.addEventListener("load",function() {
       }
       else if(col.obj.isA("EnemyBullet")) {
         this.p.life--;
-        //red = this.stage.insert(new Q.Repeater({ asset: "redScreen.png" }));
+        //this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: SPRITE_NONE }));
         //this.stage.remove(red);
       }
 
@@ -347,27 +396,32 @@ window.addEventListener("load",function() {
   Q.scene("level1",function(stage) {
     stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level1Collision.json', sheet: 'tiles', type: SPRITE_TILES }));
     stage.insert(new Q.TileLayer({ dataAsset: 'level1Background.json', sheet: 'tiles', type: SPRITE_NONE }));
-    
+    //stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: SPRITE_NONE }));
 
-    //stage.insert(new Q.Repeater({ asset: "Background3.png" }));
-    var player = stage.insert(new Q.Player({ x: 400, y: 400 }));
-    var enemy = stage.insert(new Q.Enemy({ x: 600, y: 600 }));
-    //var bullet = stage.insert(new Q.EnemyBullet({ x: 800, y: 800 }));
-    
+    var player = stage.insert(new Q.Player({ x: 700, y: 700 }));
+    var enemy = stage.insert(new Q.Enemy({ x: 800, y: 800 }));
+    var trees1 = stage.insert(new Q.Level1Trees1({ x: 485, y: 100 }));
+    var trees2 = stage.insert(new Q.Level1Trees2({ x: 300, y: 291 }));
+    var trees3 = stage.insert(new Q.Level1Trees3({ x: 90, y: 431 }));
+    var trees4 = stage.insert(new Q.Level1Trees4({ x: 145, y: 554 }));
+    var trees5 = stage.insert(new Q.Level1Trees5({ x: 117, y: 815 }));
+
     //Set viewport to follow player
     stage.add("viewport").follow(player);
-    
+   
 
     //We can change this to call different scenes when we create more
     //Instead of just calling the endgame scene
-    /*
+    
     //When the enemies have been defeated display label
     stage.on("step",function() {
           if(Q("Enemy").length == 0 && !Q.stage(1)) { 
             Q.stageScene("endGame",1, { label: "You Win!" }); 
+          } else if(Q("Player").length == 0 && !Q.stage(1)) { 
+            Q.stageScene("endGame",1, { label: "You Lose!" }); 
           }
         });
-    */
+    
   });
 
   //Scene that occurs after game ends
@@ -376,23 +430,30 @@ window.addEventListener("load",function() {
     x: Q.width/2, y: Q.height/2, fill: "rgba(255,255,255,0.5)"
     }));
 
-    var button = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
-                                                   label: "Play Again" }))         
+    var restartButton = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
+                                                   label: "Restart Level" })) 
+    var mainMenuButton = container.insert(new Q.UI.Button({ x: 0, y: 80, fill: "#CCCCCC",
+                                                   label: "Main Menu" }))        
     var label = container.insert(new Q.UI.Text({x:10, y: -10 - button.p.h, 
                                  label: stage.options.label }));
-    // When the button is clicked, clear all the stages
-    // and restart the game.
-    button.on("click",function() {
+    
+    // When the buttons are clicked, clear all the stages
+    // and restart the level or go to main menu.
+    restartButton.on("click",function() {
       Q.clearStages();
       Q.stageScene('level1');
     });
+    mainMenuButton.on("click",function() {
+      Q.clearStages();
+      Q.stageScene('mainMenu');
+    });
 
-    // Expand the container to visibily fit it's contents
+    //Expand the container to visibily fit it's contents
     container.fit(20);
   });
 
   //Load and start the level
-  Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png, redScreen.png, Background3.png", function() {
+  Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png", function() {
     Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
     Q.compileSheets("sprites.png","sprites.json");
     Q.stageScene("level1");
