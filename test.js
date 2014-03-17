@@ -272,14 +272,15 @@ window.addEventListener("load",function() {
       if(col.obj.isA("Life")) {
         this.p.life++;
       }
-      else if(col.obj.isA("EnemyBullet")) {
+      else if(col.obj.isA("Enemy")) {
         this.p.life--;
-        //this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: SPRITE_NONE }));
-        //this.stage.remove(red);
+        red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: SPRITE_NONE }));
+        setTimeout(function(){red.destroy()},1000);
       }
 
       if (this.p.life == 0) {
         this.destroy();
+        //alert("Your suit has been compromised, you have been beamed. You can return in 10 seconds");
       };
     },
 
@@ -396,7 +397,6 @@ window.addEventListener("load",function() {
   Q.scene("level1",function(stage) {
     stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level1Collision.json', sheet: 'tiles', type: SPRITE_TILES }));
     stage.insert(new Q.TileLayer({ dataAsset: 'level1Background.json', sheet: 'tiles', type: SPRITE_NONE }));
-    //stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: SPRITE_NONE }));
 
     var player = stage.insert(new Q.Player({ x: 700, y: 700 }));
     var enemy = stage.insert(new Q.Enemy({ x: 800, y: 800 }));
@@ -453,7 +453,7 @@ window.addEventListener("load",function() {
   });
 
   //Load and start the level
-  Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png", function() {
+  Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png, redScreen.json", function() {
     Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
     Q.compileSheets("sprites.png","sprites.json");
     Q.stageScene("level1");
