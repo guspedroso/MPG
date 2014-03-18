@@ -209,17 +209,21 @@ window.addEventListener("load",function() {
         sprite:"enemy",
         life: 4, //change the life to something reasonable once we get things going
         type: SPRITE_ENEMY,
-        collisionMask: SPRITE_PLAYER_BULLET | SPRITE_TILES | SPRITE_PLAYER
+        collisionMask: SPRITE_PLAYER_BULLET | SPRITE_TILES | SPRITE_PLAYER | SPRITE_ENEMY
       });
       this.add("2d, enemyControls, animation");
       this.on("hit.sprite",this,"hit");
     },
 
     hit: function(col) {
+      var life;
       if(col.obj.isA("PlayerBullet")) {
         this.p.life--;
         if (this.p.life == 0) {
-          this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
+          life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
+          this.stage.insert(new Q.Enemy({ x: 800, y: 800 }));
+          this.stage.insert(new Q.Enemy({ x: 800, y: 1000 }));
+          setTimeout(function(){life.destroy()},10000);
           this.destroy();
         }
       }
@@ -434,7 +438,7 @@ window.addEventListener("load",function() {
                                                    label: "Restart Level" })) 
     var mainMenuButton = container.insert(new Q.UI.Button({ x: 0, y: 80, fill: "#CCCCCC",
                                                    label: "Main Menu" }))        
-    var label = container.insert(new Q.UI.Text({x:10, y: -10 - button.p.h, 
+    var label = container.insert(new Q.UI.Text({x:8, y: - 10 - restartButton.p.h, 
                                  label: stage.options.label }));
     
     // When the buttons are clicked, clear all the stages
