@@ -3,7 +3,7 @@ window.addEventListener("load",function() {
   var Q = window.Q = Quintus({ development: true })
           .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI")
           .setup({ maximize:true })  // is larger than or equal to 1024x768)
-          .controls()
+          .controls().touch()
 
   //Add in the default keyboard controls
   //along with joypad controls for touch
@@ -14,6 +14,7 @@ window.addEventListener("load",function() {
     83: "down"
   });
   Q.input.joypadControls();
+
 
 	// Set the gravity to zero since this is a top down game
 	Q.gravityY = 0;
@@ -27,6 +28,7 @@ window.addEventListener("load",function() {
   var SPRITE_LIFE = 16;
   var SPRITE_ENEMY_BULLET = 32;
   var SPRITE_TREES = 64;
+  var ENEMIES_KILLED;
 
     //create the bullet object
   Q.Sprite.extend("Level1Trees1", {
@@ -218,16 +220,49 @@ window.addEventListener("load",function() {
       });
       this.add("2d, enemyControls, animation");
       this.on("hit.sprite",this,"hit");
+
     },
 
     hit: function(col) {
-      //enemy drops a life when dies. If certain amount of enemies are killed
-      //then the enemy drops a key to the door to the next part of the map
-      var life, key;
+      var life;
       if(col.obj.isA("PlayerBullet")) {
         this.p.life--;
         if (this.p.life == 0) {
+          ENEMIES_KILLED++;
+          if (ENEMIES_KILLED == 10) {
+            alert("You have killed 10 enemies");
+          }
+          if (ENEMIES_KILLED == 20) {
+            alert("You have killed 20 enemies");
+          }
+          if (ENEMIES_KILLED == 30) {
+            alert("You have killed 30 enemies");
+          }
+          if (ENEMIES_KILLED == 40) {
+            alert("You have killed 40 enemies");
+          }
+          if (ENEMIES_KILLED == 50) {
+            alert("You have killed 50 enemies");
+          }
+          if (ENEMIES_KILLED == 60) {
+            alert("You have killed 60 enemies");
+          }
+          if (ENEMIES_KILLED == 70) {
+            alert("You have killed 70 enemies");
+          }
+          if (ENEMIES_KILLED == 80) {
+            alert("You have killed 80 enemies");
+          }
+          if (ENEMIES_KILLED == 90) {
+            alert("You have killed 90 enemies");
+          }
+          if (ENEMIES_KILLED == 100) {
+            alert("You have killed 100 enemies, you're amazing");
+          }
+
           life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
+          this.stage.insert(new Q.Enemy({ x: 800, y: 800 }));
+          this.stage.insert(new Q.Enemy({ x: 800, y: 1000 }));
           setTimeout(function(){life.destroy()},10000);
           this.destroy();
         }
@@ -265,9 +300,10 @@ window.addEventListener("load",function() {
         sprite:"player",
         type: SPRITE_PLAYER,
         stepDelay: 0.1,
-        life: 100,
+        life: 10,
         bulletSpeed: 700,
         special: false,
+        enemiesKilled: 0,
         collisionMask: SPRITE_TILES | SPRITE_ENEMY | SPRITE_LIFE | SPRITE_ENEMY_BULLET
       });
 
@@ -276,6 +312,7 @@ window.addEventListener("load",function() {
       Q.input.on("fire",this,"fire");
       Q.input.on("action",this,"action");
       this.on("hit.sprite",this,"hit");
+      
     },
     
     hit: function(col) {
@@ -283,17 +320,17 @@ window.addEventListener("load",function() {
       if(col.obj.isA("Life")) {
         this.p.life++;
       }
-      else if(col.obj.isA("Enemy")) {
-        this.p.life--;
-        red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: SPRITE_NONE }));
-        setTimeout(function(){red.destroy()},250);
-      }
       else if(col.obj.isA("Special")) {
         //If the player picks up a special, change internal special variable to
         //true, that way when the player hits the action button the special 
         //will work. change it back to false after 10 sec so it doesnt work anymore
         this.p.special = true;
         setTimeout(function(){this.p.special = false},10000);
+      }
+      else if(col.obj.isA("Enemy")) {
+        this.p.life--;
+        red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: SPRITE_NONE }));
+        setTimeout(function(){red.destroy()},250);
       }
 
       if (this.p.life == 0) {
@@ -304,7 +341,7 @@ window.addEventListener("load",function() {
 
     action: function() {
       if (this.p.special) {
-        //do the special
+
       };
     },
 
@@ -419,6 +456,7 @@ window.addEventListener("load",function() {
 
   //First level
   Q.scene("level1",function(stage) {
+    ENEMIES_KILLED = 0;
     stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level1Collision.json', sheet: 'tiles', type: SPRITE_TILES }));
     stage.insert(new Q.TileLayer({ dataAsset: 'level1Background.json', sheet: 'tiles', type: SPRITE_NONE }));
 
