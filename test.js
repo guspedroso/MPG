@@ -7,7 +7,12 @@ window.addEventListener("load",function() {
 
   //Add in the default keyboard controls
   //along with joypad controls for touch
-  Q.input.keyboardControls();
+   Q.input.keyboardControls({
+    65: "left",
+    68: "right",
+    87: "up",
+    83: "down"
+  });
   Q.input.joypadControls();
 
 	// Set the gravity to zero since this is a top down game
@@ -147,7 +152,7 @@ window.addEventListener("load",function() {
 
   //A.I. controls for the enemy
   Q.component("enemyControls", {
-    defaults: { speed: 100, direction: 'left', switchPercent: 2 },
+    defaults: { speed: 200, direction: 'left', switchPercent: 2 },
 
     added: function() {
       var p = this.entity.p;
@@ -216,13 +221,13 @@ window.addEventListener("load",function() {
     },
 
     hit: function(col) {
-      var life;
+      //enemy drops a life when dies. If certain amount of enemies are killed
+      //then the enemy drops a key to the door to the next part of the map
+      var life, key;
       if(col.obj.isA("PlayerBullet")) {
         this.p.life--;
         if (this.p.life == 0) {
           life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
-          this.stage.insert(new Q.Enemy({ x: 800, y: 800 }));
-          this.stage.insert(new Q.Enemy({ x: 800, y: 1000 }));
           setTimeout(function(){life.destroy()},10000);
           this.destroy();
         }
@@ -260,14 +265,16 @@ window.addEventListener("load",function() {
         sprite:"player",
         type: SPRITE_PLAYER,
         stepDelay: 0.1,
-        life: 10,
+        life: 100,
         bulletSpeed: 700,
+        special: false,
         collisionMask: SPRITE_TILES | SPRITE_ENEMY | SPRITE_LIFE | SPRITE_ENEMY_BULLET
       });
 
       this.add("2d, stepControls, animation");
 
       Q.input.on("fire",this,"fire");
+      Q.input.on("action",this,"action");
       this.on("hit.sprite",this,"hit");
     },
     
@@ -279,12 +286,25 @@ window.addEventListener("load",function() {
       else if(col.obj.isA("Enemy")) {
         this.p.life--;
         red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: SPRITE_NONE }));
-        setTimeout(function(){red.destroy()},1000);
+        setTimeout(function(){red.destroy()},250);
+      }
+      else if(col.obj.isA("Special")) {
+        //If the player picks up a special, change internal special variable to
+        //true, that way when the player hits the action button the special 
+        //will work. change it back to false after 10 sec so it doesnt work anymore
+        this.p.special = true;
+        setTimeout(function(){this.p.special = false},10000);
       }
 
       if (this.p.life == 0) {
         this.destroy();
         //alert("Your suit has been compromised, you have been beamed. You can return in 10 seconds");
+      };
+    },
+
+    action: function() {
+      if (this.p.special) {
+        //do the special
       };
     },
 
