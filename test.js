@@ -148,79 +148,6 @@ window.addEventListener("load",function() {
     }
   });
 
-  //A.I. controls for the enemy
-  Q.component("BasicAI", {
-    defaults: { speed: 200, direction: 'left', switchPercent: 2 },
-
-    added: function() {
-      var p = this.entity.p;
-
-      Q._defaults(p,this.defaults);
-
-      this.entity.on("step",this,"step");
-      this.entity.on('hit',this,"changeDirection");
-      this.entity.on("step",this,"tryToFire");
-    },
-
-    step: function(dt) {
-      var p = this.entity.p;
-
-      // Randomly try to switch directions
-      if(Math.random() < p.switchPercent / 100) {
-        this.tryDirection();
-      }
-
-      // Add velocity in the direction we are currently heading.
-      switch(p.direction) {
-        case "left": p.vx = -p.speed; break;
-        case "right":p.vx = p.speed; break;
-        case "up":   p.vy = -p.speed; break;
-        case "down": p.vy = p.speed; break;
-      }
-    },
-
-    // Try a random direction 90 degrees away from the 
-    // current direction of movement
-    tryDirection: function() {
-      var p = this.entity.p; 
-      var from = p.direction;
-      if(p.vy != 0 && p.vx == 0) {
-        p.direction = Math.random() < 0.5 ? 'left' : 'right';
-      } else if(p.vx != 0 && p.vy == 0) {
-        p.direction = Math.random() < 0.5 ? 'up' : 'down';
-      }
-    },
-
-    // Called every collision, if we're stuck,
-    // try moving in a direction 90 away from the normal
-    changeDirection: function(collision) {
-      var p = this.entity.p;
-      if(p.vx == 0 && p.vy == 0) {
-        if(collision.normalY) {
-          p.direction = Math.random() < 0.5 ? 'left' : 'right';
-        } else if(collision.normalX) {
-          p.direction = Math.random() < 0.5 ? 'up' : 'down';
-        }
-      }
-    },
-
-    tryToFire: function() {
-      var entity = this;
-      var thing = Q("Player").first();
-      setInterval(function(){
-        this.p.fire(Q.SPRITE_ENEMY);
-      },1000);
-      /*
-      if(!thing)
-        return;
-      if (thing.entity.p.x + thing.p.w > this.entity.p.x && thing.p.x - thing.p.w < this.entity.p.x) {
-        this.fire(Q.SPRITE_ENEMY);
-      }
-      */
-    },
-   
-  });
-
   //create the enemy object
   Q.Sprite.extend("Enemy", {
     init: function(p) {
@@ -229,11 +156,20 @@ window.addEventListener("load",function() {
         sprite:"enemy",
         life: 4, //change the life to something reasonable once we get things going
         bulletSpeed: 600,
+        speed: 200,
+        direction: 'left',
+        switchPercent:2,
         type: SPRITE_ENEMY,
+        canFire: true,
+        bulletInserted: false,
         collisionMask: SPRITE_PLAYER_BULLET | SPRITE_TILES | SPRITE_PLAYER | SPRITE_ENEMY
       });
       this.add("2d, BasicAI, animation");
       this.on("hit.sprite",this,"hit");
+      this.on("fire",this,"fire");
+      this.on("step",this,"step");
+      this.on('hit',this,"changeDirection");
+      this.on("step",this,"fire");
 
     },
 
@@ -248,15 +184,11 @@ window.addEventListener("load",function() {
           {
             doors.destroy();
             doors = this.stage.collisionLayer(new Q.TileLayer({ dataAsset: 'leftDoorOpen.json', sheet: 'tiles', type: SPRITE_TILES }));
-            this.stage.insert(new Q.Enemy({ x: 500, y: 2000 }));
-            this.stage.insert(new Q.Enemy({ x: 600, y: 2000 }));
-            this.stage.insert(new Q.Enemy({ x: 700, y: 2000 }));
           }
           if (ENEMIES_KILLED == 4 && level2IsRunning) 
           {
             doors.destroy();
             doors = this.stage.collisionLayer(new Q.TileLayer({ dataAsset: 'leftTopDoorOpen.json', sheet: 'tiles', type: SPRITE_TILES }));
-            this.stage.insert(new Q.Enemy({ x: 1900, y: 100 }));
           }
           if (ENEMIES_KILLED == 5 && level2IsRunning) 
           {
@@ -279,36 +211,97 @@ window.addEventListener("load",function() {
     fire: function() {
       var p = this.p;
       var angle, x, y;
-
+      if (!p.canFire)
+        return;
+      p.canFire = false;
       //See what direction the player is in and set the bullet to go that way
       if (p.direction == "left") {
         angle = -90;
-        x = p.x - 47;
-        y = p.y + 2;
+        x = this.p.x - 47;
+        y = this.p.y + 2;
       } else if (p.direction == "right") {
         angle = 90;
-        x = p.x + 47;
-        y = p.y + 2;
+        x = this.p.x + 47;
+        y = this.p.y + 2;
       } else if (p.direction == "up") {
         angle = 0;
-        x = p.x - 8;
-        y = p.y - 60;
+        x = this.p.x - 8;
+        y = this.p.y - 60;
       } else if (p.direction == "down") {
         angle = 180;
-        x = p.x + 10;
-        y = p.y + 60;
+        x = this.p.x + 10;
+        y = this.p.y + 60;
       }
       var dx =  Math.sin(angle * Math.PI / 180),
           dy = -Math.cos(angle * Math.PI / 180);
-
+      p.bulletInserted = true;
       //Insert the bullet into the stage
       this.stage.insert(
-        new Q.PlayerBullet({ x: x, 
+        new Q.EnemyBullet({ x: x, 
                        y: y,
                        vx: dx * p.bulletSpeed,
                        vy: dy * p.bulletSpeed
                 })
       );
+      setTimeout(function() { p.bulletInserted = false}, 50);
+      setTimeout(function() { p.canFire = true}, 500);
+    },
+
+    step: function(dt) {
+      var p = this.p;
+
+      // Randomly try to switch directions
+      if(Math.random() < p.switchPercent / 100) {
+        this.tryDirection();
+      }
+
+      // Add velocity in the direction we are currently heading.
+      switch(p.direction) {
+        case "left": p.vx = -p.speed; break;
+        case "right":p.vx = p.speed; break;
+        case "up":   p.vy = -p.speed; break;
+        case "down": p.vy = p.speed; break;
+      }
+    },
+
+    // Try a random direction 90 degrees away from the 
+    // current direction of movement
+    tryDirection: function() {
+      var p = this.p; 
+      var from = p.direction;
+      if(p.vy != 0 && p.vx == 0) {
+        p.direction = Math.random() < 0.5 ? 'left' : 'right';
+      } else if(p.vx != 0 && p.vy == 0) {
+        p.direction = Math.random() < 0.5 ? 'up' : 'down';
+      }
+    },
+
+    // Called every collision, if we're stuck,
+    // try moving in a direction 90 away from the normal
+    changeDirection: function(collision) {
+      var p = this.p;
+      if(p.vx == 0 && p.vy == 0) {
+        if(collision.normalY) {
+          p.direction = Math.random() < 0.5 ? 'left' : 'right';
+        } else if(collision.normalX) {
+          p.direction = Math.random() < 0.5 ? 'up' : 'down';
+        }
+      }
+    },
+
+    tryToFire: function() {
+      var p = this.p;
+      var player = Q("Player").first();
+      setInterval(function(){
+        //this.call(p,fire());
+      },1000);
+    /*  
+      if(!player)
+        return;
+      if (player.x + player.w > this.entity.x && player.x - player.w < this.entity.x) {
+        alert("I see yo ass");
+      }
+      */
     },
   });
 
@@ -347,6 +340,7 @@ window.addEventListener("load",function() {
         special: false,
         bulletInserted: false,
         canFire: true,
+        beenHit: false,
         collisionMask: SPRITE_TILES | SPRITE_ENEMY | SPRITE_LIFE | SPRITE_ENEMY_BULLET
       });
 
@@ -359,23 +353,26 @@ window.addEventListener("load",function() {
     
     hit: function(col) {
       var red;
+      var p = this.p;
       if(col.obj.isA("Life")) {
-        this.p.life++;
+        p.life++;
       }
       else if(col.obj.isA("Special")) {
         //If the player picks up a special, change internal special variable to
         //true, that way when the player hits the action button the special 
         //will work. change it back to false after 10 sec so it doesnt work anymore
-        this.p.special = true;
-        setTimeout(function(){this.p.special = false},10000);
+        p.special = true;
+        setTimeout(function(){p.special = false},10000);
       }
-      else if(col.obj.isA("Enemy")) {
-        this.p.life--;
+      else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet")) && !p.beenHit) {
+        p.beenHit = true;
+        p.life--;
         red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: SPRITE_NONE }));
-        setTimeout(function(){red.destroy()},250);
+        setTimeout(function(){red.destroy()},200);
+        setTimeout(function(){p.beenHit = false}, 200);
       }
 
-      if (this.p.life == 0) {
+      if (p.life == 0) {
         this.destroy();
         //alert("Your suit has been compromised, you have been beamed. You can return in 10 seconds");
       }
@@ -422,7 +419,7 @@ window.addEventListener("load",function() {
                        vy: dy * p.bulletSpeed
                 })
       );
-      setTimeout(function() { p.bulletInserted = false}, 100);
+      setTimeout(function() { p.bulletInserted = false}, 50);
       setTimeout(function() { p.canFire = true}, 500);
     },
     
@@ -469,13 +466,13 @@ window.addEventListener("load",function() {
       }
       else {
         if (Q.inputs["fire"] && this.p.bulletInserted) {
-          if (this.p.direction == "right") {
+          if (this.p.direction == "right" && this.p.bulletInserted) {
             this.play("fire_standing_right"); 
-          } else if (this.p.direction == "left") {
+          } else if (this.p.direction == "left" && this.p.bulletInserted) {
             this.play("fire_standing_left");
-          } else if (this.p.direction == "up") {
+          } else if (this.p.direction == "up" && this.p.bulletInserted) {
             this.play("fire_standing_back");
-          } else if (this.p.direction == "down") {
+          } else if (this.p.direction == "down" && this.p.bulletInserted) {
             this.play("fire_standing_front");
           }
           
@@ -602,6 +599,10 @@ window.addEventListener("load",function() {
     stage.insert(new Q.Enemy({ x: 1800, y: 1200 }));
     stage.insert(new Q.Enemy({ x: 1300, y: 2000 }));
     stage.insert(new Q.Enemy({ x: 1300, y: 2100 }));
+    stage.insert(new Q.Enemy({ x: 500, y: 2000 }));
+    stage.insert(new Q.Enemy({ x: 600, y: 2000 }));
+    stage.insert(new Q.Enemy({ x: 700, y: 2000 }));
+    stage.insert(new Q.Enemy({ x: 1900, y: 100 }));
 
     //Set viewport to follow player
     stage.add("viewport").follow(player);
