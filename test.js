@@ -29,6 +29,8 @@ window.addEventListener("load",function() {
   var SPRITE_ENEMY_BULLET = 32;
   var SPRITE_TREES = 64;
   var ENEMIES_KILLED;
+  var doors;
+  var level2IsRunning = false;
 
     //create the bullet object
   Q.Sprite.extend("Level1Trees1", {
@@ -93,18 +95,15 @@ window.addEventListener("load",function() {
         sheet:"playerBullet",
         sprite:"playerBullet",
         type: SPRITE_PLAYER_BULLET,
-        collisionMask: SPRITE_ENEMY
+        collisionMask: SPRITE_ENEMY | SPRITE_TILES
       });
       this.add("2d");
-      this.on("hit.sprite",this,"collision");
+      this.on("hit",this,"collision");
     },
 
     //destory the bullet if it hits an enemy or player
     collision: function(col) {
-      var objP = col.obj.p;
-      if (objP.type == SPRITE_ENEMY) {
-        this.destroy();
-      };
+      this.destroy();
     }
   });
 
@@ -115,18 +114,15 @@ window.addEventListener("load",function() {
         sheet:"enemyBullet",
         sprite:"enemyBullet",
         type: SPRITE_ENEMY_BULLET,
-        collisionMask: SPRITE_PLAYER
+        collisionMask: SPRITE_PLAYER | SPRITE_TILES
       });
       this.add("2d");
-      this.on("hit.sprite",this,"collision");
+      this.on("hit",this,"collision");
     },
 
     //destory the bullet if it hits an enemy or player
     collision: function(col) {
-      var objP = col.obj.p;
-      if (objP.type == SPRITE_PLAYER) {
-        this.destroy();
-      };
+      this.destroy();
     }
   });
 
@@ -148,12 +144,12 @@ window.addEventListener("load",function() {
       var objP = col.obj.p;
       if (objP.type == SPRITE_PLAYER) {
         this.destroy();
-      };
+      }
     }
   });
 
   //A.I. controls for the enemy
-  Q.component("enemyControls", {
+  Q.component("BasicAI", {
     defaults: { speed: 200, direction: 'left', switchPercent: 2 },
 
     added: function() {
@@ -163,6 +159,7 @@ window.addEventListener("load",function() {
 
       this.entity.on("step",this,"step");
       this.entity.on('hit',this,"changeDirection");
+      this.entity.on("step",this,"tryToFire");
     },
 
     step: function(dt) {
@@ -205,7 +202,23 @@ window.addEventListener("load",function() {
           p.direction = Math.random() < 0.5 ? 'up' : 'down';
         }
       }
-    }
+    },
+
+    tryToFire: function() {
+      var entity = this;
+      var thing = Q("Player").first();
+      setInterval(function(){
+        this.p.fire(Q.SPRITE_ENEMY);
+      },1000);
+      /*
+      if(!thing)
+        return;
+      if (thing.entity.p.x + thing.p.w > this.entity.p.x && thing.p.x - thing.p.w < this.entity.p.x) {
+        this.fire(Q.SPRITE_ENEMY);
+      }
+      */
+    },
+   
   });
 
   //create the enemy object
@@ -215,59 +228,88 @@ window.addEventListener("load",function() {
         sheet:"enemy",
         sprite:"enemy",
         life: 4, //change the life to something reasonable once we get things going
+        bulletSpeed: 600,
         type: SPRITE_ENEMY,
         collisionMask: SPRITE_PLAYER_BULLET | SPRITE_TILES | SPRITE_PLAYER | SPRITE_ENEMY
       });
-      this.add("2d, enemyControls, animation");
+      this.add("2d, BasicAI, animation");
       this.on("hit.sprite",this,"hit");
 
     },
 
     hit: function(col) {
-      var life;
-      if(col.obj.isA("PlayerBullet")) {
+      if(col.obj.isA("PlayerBullet")) 
+      {
         this.p.life--;
-        if (this.p.life == 0) {
+        if (this.p.life == 0) 
+        {
           ENEMIES_KILLED++;
-          if (ENEMIES_KILLED == 10) {
-            alert("You have killed 10 enemies");
+          if (ENEMIES_KILLED == 1 && level2IsRunning) 
+          {
+            doors.destroy();
+            doors = this.stage.collisionLayer(new Q.TileLayer({ dataAsset: 'leftDoorOpen.json', sheet: 'tiles', type: SPRITE_TILES }));
+            this.stage.insert(new Q.Enemy({ x: 500, y: 2000 }));
+            this.stage.insert(new Q.Enemy({ x: 600, y: 2000 }));
+            this.stage.insert(new Q.Enemy({ x: 700, y: 2000 }));
           }
-          if (ENEMIES_KILLED == 20) {
-            alert("You have killed 20 enemies");
+          if (ENEMIES_KILLED == 4 && level2IsRunning) 
+          {
+            doors.destroy();
+            doors = this.stage.collisionLayer(new Q.TileLayer({ dataAsset: 'leftTopDoorOpen.json', sheet: 'tiles', type: SPRITE_TILES }));
+            this.stage.insert(new Q.Enemy({ x: 1900, y: 100 }));
           }
-          if (ENEMIES_KILLED == 30) {
-            alert("You have killed 30 enemies");
+          if (ENEMIES_KILLED == 5 && level2IsRunning) 
+          {
+            doors.destroy();
+            doors = this.stage.collisionLayer(new Q.TileLayer({ dataAsset: 'leftTopRightDoorOpen.json', sheet: 'tiles', type: SPRITE_TILES }));
           }
-          if (ENEMIES_KILLED == 40) {
-            alert("You have killed 40 enemies");
-          }
-          if (ENEMIES_KILLED == 50) {
-            alert("You have killed 50 enemies");
-          }
-          if (ENEMIES_KILLED == 60) {
-            alert("You have killed 60 enemies");
-          }
-          if (ENEMIES_KILLED == 70) {
-            alert("You have killed 70 enemies");
-          }
-          if (ENEMIES_KILLED == 80) {
-            alert("You have killed 80 enemies");
-          }
-          if (ENEMIES_KILLED == 90) {
-            alert("You have killed 90 enemies");
-          }
-          if (ENEMIES_KILLED == 100) {
-            alert("You have killed 100 enemies, you're amazing");
+          if (ENEMIES_KILLED == 6 && level2IsRunning) 
+          {
+            doors.destroy();
+            doors = this.stage.collisionLayer(new Q.TileLayer({ dataAsset: 'allDoorsOpen.json', sheet: 'tiles', type: SPRITE_TILES }));
           }
 
-          life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
-          this.stage.insert(new Q.Enemy({ x: 800, y: 800 }));
-          this.stage.insert(new Q.Enemy({ x: 800, y: 1000 }));
+          this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
           setTimeout(function(){life.destroy()},10000);
           this.destroy();
         }
       }
-    }
+    },
+
+    fire: function() {
+      var p = this.p;
+      var angle, x, y;
+
+      //See what direction the player is in and set the bullet to go that way
+      if (p.direction == "left") {
+        angle = -90;
+        x = p.x - 47;
+        y = p.y + 2;
+      } else if (p.direction == "right") {
+        angle = 90;
+        x = p.x + 47;
+        y = p.y + 2;
+      } else if (p.direction == "up") {
+        angle = 0;
+        x = p.x - 8;
+        y = p.y - 60;
+      } else if (p.direction == "down") {
+        angle = 180;
+        x = p.x + 10;
+        y = p.y + 60;
+      }
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.PlayerBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
+    },
   });
 
   //Set up the animations for the player, reading frames from sprites.png
@@ -303,12 +345,12 @@ window.addEventListener("load",function() {
         life: 10,
         bulletSpeed: 700,
         special: false,
-        enemiesKilled: 0,
+        bulletInserted: false,
+        canFire: true,
         collisionMask: SPRITE_TILES | SPRITE_ENEMY | SPRITE_LIFE | SPRITE_ENEMY_BULLET
       });
 
       this.add("2d, stepControls, animation");
-
       Q.input.on("fire",this,"fire");
       Q.input.on("action",this,"action");
       this.on("hit.sprite",this,"hit");
@@ -336,7 +378,7 @@ window.addEventListener("load",function() {
       if (this.p.life == 0) {
         this.destroy();
         //alert("Your suit has been compromised, you have been beamed. You can return in 10 seconds");
-      };
+      }
     },
 
     action: function() {
@@ -348,7 +390,9 @@ window.addEventListener("load",function() {
     fire: function() {
       var p = this.p;
       var angle, x, y;
-
+      if (!p.canFire)
+        return;
+      p.canFire = false;
       //See what direction the player is in and set the bullet to go that way
       if (p.direction == "left") {
         angle = -90;
@@ -369,7 +413,7 @@ window.addEventListener("load",function() {
       }
       var dx =  Math.sin(angle * Math.PI / 180),
           dy = -Math.cos(angle * Math.PI / 180);
-
+      p.bulletInserted = true;
       //Insert the bullet into the stage
       this.stage.insert(
         new Q.PlayerBullet({ x: x, 
@@ -378,6 +422,8 @@ window.addEventListener("load",function() {
                        vy: dy * p.bulletSpeed
                 })
       );
+      setTimeout(function() { p.bulletInserted = false}, 100);
+      setTimeout(function() { p.canFire = true}, 500);
     },
     
     //step function for controlling how this sprite will move
@@ -389,7 +435,7 @@ window.addEventListener("load",function() {
 
         //play the fire animation if input reads that the player is firing,
         //else just play the running animation
-        if (Q.inputs["fire"]) {
+        if (Q.inputs["fire"] && this.p.bulletInserted) {
           this.play("fire_right_running");
         }
         else {
@@ -397,7 +443,7 @@ window.addEventListener("load",function() {
         }
       } else if(Q.inputs["left"]) {
         this.p.direction = "left";
-        if (Q.inputs["fire"]) {
+        if (Q.inputs["fire"] && this.p.bulletInserted) {
           this.play("fire_left_running")
         }
         else {
@@ -406,7 +452,7 @@ window.addEventListener("load",function() {
       }
       else if(Q.inputs["up"]) {
         this.p.direction = "up";
-        if (Q.inputs['fire']) {
+        if (Q.inputs['fire'] && this.p.bulletInserted) {
           this.play("fire_back_running")
         }
         else {
@@ -414,12 +460,67 @@ window.addEventListener("load",function() {
         }
       } else if(Q.inputs["down"]) {
         this.p.direction = "down";
-        if (Q.inputs["fire"]) {
+        if (Q.inputs["fire"] && this.p.bulletInserted) {
           this.play("fire_front_running")
         }
         else {
           this.play("run_front");
         }
+      }
+      else {
+        if (Q.inputs["fire"] && this.p.bulletInserted) {
+          if (this.p.direction == "right") {
+            this.play("fire_standing_right"); 
+          } else if (this.p.direction == "left") {
+            this.play("fire_standing_left");
+          } else if (this.p.direction == "up") {
+            this.play("fire_standing_back");
+          } else if (this.p.direction == "down") {
+            this.play("fire_standing_front");
+          }
+          
+        }
+        else {
+          if (this.p.direction == "right") {
+            this.play("stand_right"); 
+          } else if (this.p.direction == "left") {
+            this.play("stand_left");
+          } else if (this.p.direction == "up") {
+            this.play("stand_back");
+          } else if (this.p.direction == "down") {
+            this.play("stand_front");
+          }
+        }
+      }
+    },
+  });
+/*
+//Grab the input and determine which animation to play
+      if(Q.inputs["right"] && Q.inputs["fire"] && this.p.canFire) {
+        //set the direction of the player depending on the input
+        this.play("fire_right_running");
+        this.p.direction = "right";
+      } else if (Q.inputs["right"]) {
+        this.play("run_right");
+        this.p.direction = "right";
+      } else if(Q.inputs["left"] && Q.inputs["fire"] && this.p.canFire) {
+        this.play("fire_left_running")
+        this.p.direction = "left";
+      } else if (Q.inputs["left"]) {
+        this.play("run_left");
+        this.p.direction = "left";
+      } else if(Q.inputs["up"] && Q.inputs["fire"] && this.p.canFire) {
+        this.play("fire_back_running")
+        this.p.direction = "up";
+      } else if (Q.inputs["up"]) {
+        this.play("run_back");
+        this.p.direction = "up";
+      } else if(Q.inputs["down"] && Q.inputs["fire"] && this.p.canFire) {
+        this.play("fire_front_running")
+        this.p.direction = "down";
+      } else if (Q.inputs["down"]) {
+        this.play("run_front");
+        this.p.direction = "down";
       }
       else {
         if (Q.inputs["fire"]) {
@@ -447,8 +548,8 @@ window.addEventListener("load",function() {
         }
       }
     },
-  });
 
+*/
   //Main game screen
   Q.scene("mainMenu",function(stage) {
     //Set up the main screen and buttons
@@ -461,7 +562,7 @@ window.addEventListener("load",function() {
     stage.insert(new Q.TileLayer({ dataAsset: 'level1Background.json', sheet: 'tiles', type: SPRITE_NONE }));
 
     var player = stage.insert(new Q.Player({ x: 700, y: 700 }));
-    var enemy = stage.insert(new Q.Enemy({ x: 800, y: 800 }));
+    var enemy = stage.insert(new Q.Enemy({ x: 1000, y: 1000 }));
     var trees1 = stage.insert(new Q.Level1Trees1({ x: 485, y: 100 }));
     var trees2 = stage.insert(new Q.Level1Trees2({ x: 300, y: 291 }));
     var trees3 = stage.insert(new Q.Level1Trees3({ x: 90, y: 431 }));
@@ -477,13 +578,45 @@ window.addEventListener("load",function() {
     
     //When the enemies have been defeated display label
     stage.on("step",function() {
+      if(Q("Enemy").length == 0 && !Q.stage(1)) 
+      { 
+        Q.stageScene("endGame",1, { label: "You Win!" }); 
+      } 
+      else if(Q("Player").length == 0 && !Q.stage(1)) 
+      { 
+        Q.stageScene("endGame",1, { label: "You Lose!" }); 
+      }
+    });
+    
+  });
+
+  //Second level
+  Q.scene("level2",function(stage) {
+    ENEMIES_KILLED = 0;
+    level2IsRunning = true;
+    stage.insert(new Q.TileLayer({ dataAsset: 'level2Background.json', sheet: 'tiles', type: SPRITE_NONE }));
+    doors = stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level2Collision.json', sheet: 'tiles', type: SPRITE_TILES }));
+
+    var player = stage.insert(new Q.Player({ x: 1300, y: 1200 }));
+    stage.insert(new Q.Enemy({ x: 1400, y: 1400 }));
+    stage.insert(new Q.Enemy({ x: 1800, y: 1200 }));
+    stage.insert(new Q.Enemy({ x: 1300, y: 2000 }));
+    stage.insert(new Q.Enemy({ x: 1300, y: 2100 }));
+
+    //Set viewport to follow player
+    stage.add("viewport").follow(player);
+
+    //When the enemies have been defeated display label
+    stage.on("step",function() {
           if(Q("Enemy").length == 0 && !Q.stage(1)) { 
+            level2IsRunning = false;
             Q.stageScene("endGame",1, { label: "You Win!" }); 
           } else if(Q("Player").length == 0 && !Q.stage(1)) { 
+            level2IsRunning = false;
             Q.stageScene("endGame",1, { label: "You Lose!" }); 
           }
         });
-    
+
   });
 
   //Scene that occurs after game ends
@@ -495,7 +628,7 @@ window.addEventListener("load",function() {
     var restartButton = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
                                                    label: "Restart Level" })) 
     var mainMenuButton = container.insert(new Q.UI.Button({ x: 0, y: 80, fill: "#CCCCCC",
-                                                   label: "Main Menu" }))        
+                                                   label: "Main Menu (Does Nothing)" }))        
     var label = container.insert(new Q.UI.Text({x:8, y: - 10 - restartButton.p.h, 
                                  label: stage.options.label }));
     
@@ -503,7 +636,7 @@ window.addEventListener("load",function() {
     // and restart the level or go to main menu.
     restartButton.on("click",function() {
       Q.clearStages();
-      Q.stageScene('level1');
+      Q.stageScene('level2');
     });
     mainMenuButton.on("click",function() {
       Q.clearStages();
@@ -515,10 +648,10 @@ window.addEventListener("load",function() {
   });
 
   //Load and start the level
-  Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png, redScreen.json", function() {
+  Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png, redScreen.json, level2Collision.json, level2Background.json, greenDoor.json, blueDoor.json, yellowDoor.json, orangeDoor.json, leftDoorOpen.json, rightDoorOpen.json, topDoorOpen.json, bottomDoorOpen.json, leftTopDoorOpen.json, leftTopRightDoorOpen.json, allDoorsOpen.json", function() {
     Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
     Q.compileSheets("sprites.png","sprites.json");
-    Q.stageScene("level1");
+    Q.stageScene("level2");
   });
 
 });
