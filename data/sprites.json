@@ -7,6 +7,4 @@
 "level1Trees2":{"sx":0,"sy":467,"cols":1,"tilew":600,"tileh":160,"frames":1},
 "level1Trees3":{"sx":0,"sy":630,"cols":1,"tilew":180,"tileh":120,"frames":1},
 "level1Trees4":{"sx":0,"sy":760,"cols":1,"tilew":290,"tileh":125,"frames":1},
-"level1Trees5":{"sx":0,"sy":885,"cols":1,"tilew":240,"tileh":400,"frames":1},
-"horizontalDoor":{"sx":0,"sy":1000,"cols":1,"tilew":128,"tileh":32,"frames":1},
-"verticalDoor":{"sx":0,"sy":1032,"cols":1,"tilew":32,"tileh":128,"frames":1}}
+"level1Trees5":{"sx":0,"sy":885,"cols":1,"tilew":240,"tileh":400,"frames":1}}
