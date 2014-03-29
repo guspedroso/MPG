@@ -2,7 +2,7 @@ window.addEventListener("load",function() {
 
   var Q = window.Q = Quintus({ development: true })
           .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI")
-          .setup({ maximize:true })  // is larger than or equal to 1024x768)
+          .setup({ maximize:true }) 
           .controls().touch()
 
   //Add in the default keyboard controls
@@ -37,6 +37,7 @@ window.addEventListener("load",function() {
   Q.SPRITE_DOOR = 4096;
   Q.SPRITE_SPECIAL_BULLET = 8192;
   Q.SPRITE_SPECIAL = 16384;
+  Q.SPRITE_EXPLOSION = 32768;
 
   var totalEnemiesKilled;
   var topDoor;
@@ -129,6 +130,11 @@ window.addEventListener("load",function() {
     }
   });
 
+  //Set up the animations for the player, reading frames from sprites.png
+  Q.animations("playerBullet", {
+    playerLight: {frames:[0,1,2,3,4,4,4,3,2,1,0], rate: 1/6, loop: true},
+  });
+
   //create the bullet object
   Q.Sprite.extend("PlayerBullet", {
     init: function(p) {
@@ -138,19 +144,47 @@ window.addEventListener("load",function() {
         type: Q.SPRITE_PLAYER_BULLET,
         collisionMask: Q.SPRITE_ENEMY | Q.SPRITE_TILES | Q.SPRITE_DOOR
       });
-      this.add("2d");
+      this.add("2d, animation");
       this.on("hit",this,"collision");
+      this.on("step",this,"animate");
     },
 
+    animate: function() {
+      this.play("playerLight");
+    },
     //destory the bullet if it hits an enemy or player
     collision: function(col) {
       this.destroy();
     }
   });
 
+  Q.animations("explosion", {
+    explode: {frames:[0,1,2,3,4,5], rate: 1/4, loop: false},
+  });
+
+  Q.Sprite.extend("Explosion", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"explosion",
+        sprite:"explosion",
+        type: Q.SPRITE_EXPLOSION,
+        collisionMask: Q.SPRITE_ENEMY
+      });
+      this.add("2d, animation");
+      this.on("step",this,"animate");
+    },
+
+    animate: function() {
+      var p = this;
+      this.play("explode");
+      setTimeout(function(){p.destroy()},800);
+      return;
+    },
+  });
+
   //Set up the animations for the player, reading frames from sprites.png
   Q.animations("specialBullet", {
-    explode: {frames:[1,2,3,4,5], rate: 1/8},
+    specialLight: {frames:[0,1,2,3,4,4,4,3,2,1,0], rate: 1/6, loop: true},
   });
 
   //create the bullet object
@@ -164,11 +198,16 @@ window.addEventListener("load",function() {
       });
       this.add("2d, animation");
       this.on("hit",this,"collision");
+      this.on("step",this,"animate");
     },
 
+    animate: function() {
+      this.play("specialLight");
+    },
     //destory the bullet if it hits an enemy or player
     collision: function(col) {
-      this.play("explode");
+      //this.play("explode");
+      this.stage.insert(new Q.Explosion({ x: this.p.x, y: this.p.y }));
       this.destroy();
     }
   });
@@ -191,30 +230,7 @@ window.addEventListener("load",function() {
       this.destroy();
     }
   });
-/*
-  //create the life object
-  Q.Sprite.extend("Life", {
-    init: function(p) {
-      this._super(p,{
-        sheet:"life",
-        sprite:"life",
-        sensor: true,
-        type: Q.SPRITE_LIFE,
-        collisionMask: Q.SPRITE_PLAYER
-      });
-      this.on("sensor");
-    },
 
-    //If the life collides with a player, destroy it, keep it on map otherwise
-    sensor: function(colObj) {
-      if (colObj.p.type == Q.SPRITE_PLAYER) {
-        colObj.p.life++;
-        Q.stageScene('hud', 3, colObj.p);
-        this.destroy();
-      }
-    }
-  });
-*/
   //create the life object
   Q.Sprite.extend("Life", {
     init: function(p) {
@@ -265,7 +281,7 @@ window.addEventListener("load",function() {
       this._super(p,{
         sheet:"player",
         sprite:"player",
-        life: 1, //change the life to something reasonable once we get things going
+        life: 5, //change the life to something reasonable once we get things going
         bulletSpeed: 600,
         speed: 200,
         direction: 'left',
@@ -273,7 +289,7 @@ window.addEventListener("load",function() {
         type: Q.SPRITE_ENEMY,
         canFire: true,
         bulletInserted: false,
-        collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET
+        collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_EXPLOSION
       });
       this.add("2d, BasicAI, animation");
       this.on("hit.sprite",this,"hit");
@@ -328,33 +344,16 @@ window.addEventListener("load",function() {
         if (this.p.life == 0) 
         {
           totalEnemiesKilled++;
-          if (totalEnemiesKilled == 1 && level2IsRunning) 
-          {
-            //topDoor.destroy();
-          }
-          if (totalEnemiesKilled == 4 && level2IsRunning) 
-          {
-            //bottomDoor.destroy();
-          }
-          if (totalEnemiesKilled == 5 && level2IsRunning) 
-          {
-            //leftDoor.destroy();
-          }
-          if (totalEnemiesKilled == 6 && level2IsRunning) 
-          {
-            //rightDoor.destroy();
-          }
-
           life = this.stage.insert(new Q.Special({ x: this.p.x, y: this.p.y }));
           setTimeout(function(){life.destroy()},10000);
           this.destroy();
         }
       }
-      else if (col.obj.isA("SpecialBullet")) 
+      else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
       {
         life = this.stage.insert(new Q.Special({ x: this.p.x, y: this.p.y }));
-        setTimeout(function(){life.destroy()},10000);
-        this.destroy();
+          setTimeout(function(){life.destroy()},10000);
+          this.destroy();
       }
     },
 
@@ -446,7 +445,7 @@ window.addEventListener("load",function() {
       if(!player)
         return;
       if (player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x) {
-        this.fire();
+        //this.fire();
       }
       
     },
@@ -697,19 +696,19 @@ window.addEventListener("load",function() {
   
   //HUD
   Q.scene('hud',function(stage) {
-  var container = stage.insert(new Q.UI.Container({
-    x: 60, y: 0
-  }));
+  var container = stage.insert(new Q.UI.Container({x: 60, y: 0}));
 
   var special = container.insert(new Q.UI.Text({x:240, y: 20,
     label: "Special: " + stage.options.special, color: "white" }));
 
   var health = container.insert(new Q.UI.Text({x:60, y: 20,
-    label: "Health: " + stage.options.life, color: "white" }));
+    label: "Health: " + stage.options.life, color: "green" }));
 
   var specialBullets = container.insert(new Q.UI.Text({x:470, y: 20,
     label: "Special Bullets: " + stage.options.specialBullets, color: "white" }));
 
+  var controls = container.insert(new Q.UI.Text({x:1000, y: 20,
+    label: "Move: WASD, Shoot: SPACEBAR, Special: 'J'", color: "white" }));
   container.fit(20);
 });
 
@@ -767,15 +766,15 @@ window.addEventListener("load",function() {
     */
     var player = stage.insert(new Q.Player({ x: 1300, y: 1200 }));
     
-    stage.insert(new Q.Enemy({ x: 1400, y: 1400 }));
-    
     stage.insert(new Q.Enemy({ x: 1800, y: 1200 }));
     stage.insert(new Q.Enemy({ x: 1350, y: 1800 }));
-    stage.insert(new Q.Enemy({ x: 1350, y: 2000 }));
+    stage.insert(new Q.Enemy({ x: 1350, y: 3000 }));
     stage.insert(new Q.Enemy({ x: 500, y: 2000 }));
     stage.insert(new Q.Enemy({ x: 600, y: 2000 }));
     stage.insert(new Q.Enemy({ x: 700, y: 2000 }));
     stage.insert(new Q.Enemy({ x: 1900, y: 100 }));
+    stage.insert(new Q.Enemy({ x: 200, y: 200 }));
+    stage.insert(new Q.Enemy({ x: 300, y: 300 }));
     
     //Set viewport to follow player
     stage.add("viewport").follow(player);
