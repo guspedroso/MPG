@@ -47,6 +47,7 @@ function setEventHandlers() {
 // Commands to perform upon connection, etc. 
 function onSocketConnect(client) {
   console.log("new client connected " + client.id);
+  this.emit('connect', client.id);
   
   client.on('disconnect', clientDisconnect);
   client.on('new player', newPlayer);

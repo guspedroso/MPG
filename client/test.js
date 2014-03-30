@@ -1,6 +1,7 @@
 ///////////////////////////// SOCKET STUFF /////////////////////////////////////
 
 var socket = io.connect('http://compute:12315', { transports: ["websocket"]});
+var clientID;
 
 socket.on('connect', socketConnect);
 socket.on('disconnect', socketDisconnect);
@@ -8,8 +9,9 @@ socket.on('new player', newPlayer);
 socket.on('move player', movePlayer);
 socket.on('remove player', removePlayer);
 
-function socketConnect() {
-  console.log("Connected to the socket server...");
+function socketConnect(data) {
+  clientID = data;
+  console.log("Connected to the socket server..." + data);
 };
 
 function socketDisconnect() {
@@ -156,7 +158,7 @@ Q.component("stepControls", {
       } else if (p.diffX < 0) {
         stepDir = "left";
       }
-      socket.emit('move player', { px: p.x, py: p.y, po: stepDir });
+      socket.emit('move player', { pid: clientID, px: p.x, py: p.y, po: stepDir });
     }
   }
 });
@@ -773,7 +775,7 @@ Q.component("stepControls", {
                        vy: dy * p.bulletSpeed
                 })
       );
-      socket.emit('fire bullet', { px: p.x, py: p.y, po: p.direction });
+      socket.emit('fire bullet', { pid: clientID, px: p.x, py: p.y, po: p.direction });
       setTimeout(function() { p.bulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 200);
     },
