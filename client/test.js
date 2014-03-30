@@ -1,3 +1,5 @@
+///////////////////////////// SOCKET STUFF /////////////////////////////////////
+
 var socket = io.connect('http://compute:12315', { transports: ["websocket"]});
 
 socket.on('connect', socketConnect);
@@ -18,9 +20,13 @@ function newPlayer(data) {
   console.log("new player joined...");
 };
 
-function movePlayer(data){
+function movePlayer(data) {
   console.log(data);
   console.log("moving player");
+};
+
+function playerDirection(data) {
+
 };
 
 function removePlayer(data) {
@@ -28,6 +34,29 @@ function removePlayer(data) {
   console.log("removing player");
 };
 
+function newEnemy(data) {
+
+};
+
+function moveEnemy(data) {
+
+};
+
+function removeEnemy(data) {
+
+};
+
+function drawFriendlyBullet(data) {
+
+};
+
+function drawEnemyBullet(data) {
+
+};
+
+
+///////////////////////////// SOCKET STUFF ABOVE ///////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 window.addEventListener("load",function() {
 
@@ -47,6 +76,95 @@ window.addEventListener("load",function() {
   });
   Q.input.joypadControls();
 
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////// OVERRIDEN QUINTUS FUNCTIONS ///////////////////////////
+
+Q.component("stepControls", {
+
+  added: function() {
+    var p = this.entity.p;
+
+    if(!p.stepDistance) { p.stepDistance = 32; }
+    if(!p.stepDelay) { p.stepDelay = 0.2; }
+
+    p.stepWait = 0;
+    this.entity.on("step",this,"step");
+    this.entity.on("hit", this,"collision");
+  },
+
+  collision: function(col) {
+    var p = this.entity.p;
+
+    if(p.stepping) {
+      p.stepping = false;
+      p.x = p.origX;
+      p.y = p.origY;
+    }
+
+  },
+
+  step: function(dt) {
+    var p = this.entity.p,
+        moved = false;
+    p.stepWait -= dt;
+
+    if(p.stepping) {
+      p.x += p.diffX * dt / p.stepDelay;
+      p.y += p.diffY * dt / p.stepDelay;
+    }
+
+    if(p.stepWait > 0) { return; }
+    if(p.stepping) {
+      p.x = p.destX;
+      p.y = p.destY;
+    }
+    p.stepping = false;
+
+    p.diffX = 0;
+    p.diffY = 0;
+
+    if(Q.inputs['left']) {
+      p.diffX = -p.stepDistance;
+    } else if(Q.inputs['right']) {
+      p.diffX = p.stepDistance;
+    }
+
+    if(Q.inputs['up']) {
+      p.diffY = -p.stepDistance;
+    } else if(Q.inputs['down']) {
+      p.diffY = p.stepDistance;
+    }
+
+    if(p.diffY || p.diffX ) { 
+      p.stepping = true;
+      p.origX = p.x;
+      p.origY = p.y;
+      p.destX = p.x + p.diffX;
+      p.destY = p.y + p.diffY;
+      p.stepWait = p.stepDelay; 
+
+      // Check direction
+      var stepDir;
+      if (p.diffY > 0) {
+        stepDir = "up";
+      } else if (p.diffY < 0) {
+        stepDir = "down";
+      }
+
+      if (p.diffX > 0) {
+        stepDir = "right";
+      } else if (p.diffX < 0) {
+        stepDir = "left";
+      }
+      socket.emit('move player', { px: p.x, py: p.y, po: stepDir });
+    }
+  }
+});
+
+
+////////////////////// OVERRIDDEN QUINTUS FUNCTIONS ABOVE //////////////////////
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// GAME STUFF ///////////////////////////////////
 
 	// Set the gravity to zero since this is a top down game
 	Q.gravityY = 0;
@@ -529,6 +647,7 @@ window.addEventListener("load",function() {
       Q.input.on("fire",this,"fire");
       Q.input.on("action",this,"action");
       this.on("hit.sprite",this,"hit");
+
       
     },
     
@@ -654,7 +773,7 @@ window.addEventListener("load",function() {
                        vy: dy * p.bulletSpeed
                 })
       );
-      socket.emit('fire bullet', { pid: '1', px: p.x, py: p.y, po: p.direction });
+      socket.emit('fire bullet', { px: p.x, py: p.y, po: p.direction });
       setTimeout(function() { p.bulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 200);
     },
