@@ -47,7 +47,6 @@ function setEventHandlers() {
 // Commands to perform upon connection, etc. 
 function onSocketConnect(client) {
   console.log("new client connected " + client.id);
-  this.emit('connect', client.id);
   
   client.on('disconnect', clientDisconnect);
   client.on('new player', newPlayer);
@@ -81,10 +80,32 @@ function newPlayer(data) {
 };
 
 function movePlayer(data) {
+  console.log(this.id);
   console.log(data);
 
+  // Find the player to move
+ // var playerToMove = findPlayer(this.id);
+
+  // Set the new x and y for the player being moved
+  //playerToMove.setX(data.x);
+  //playerToMove.setY(data.y);
+
+//  this.broadcast.emit('move player', { pid: playerToMove.id, 
+//    px: playerToMove.px, py: playerToMove.py, po: playerToMove.po });
 };
 
 function fireBullet(data) {
+  console.log(this.id);
   console.log(data);
+  this.broadcast.emit('fire bullet', { pid: this.id, px: data.px, py: data.py, po: data.po });
+};
+
+
+// This function will locate the player within the array by its assigned ID
+function findPlayer(id) {
+  for (var i = 0; i < players.length; i++) {
+    if (players[i].id == id) {
+      return players[i];
+    };
+  };
 };
