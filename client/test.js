@@ -7,6 +7,8 @@ socket.on('disconnect', socketDisconnect);
 socket.on('new player', newPlayer);
 socket.on('move player', movePlayer);
 socket.on('remove player', removePlayer);
+socket.on('new enemy', newEnemy);
+
 
 function socketConnect() {
   console.log("Connected to the socket server..." + data);
@@ -26,17 +28,14 @@ function movePlayer(data) {
   console.log("moving player");
 };
 
-function playerDirection(data) {
-
-};
-
 function removePlayer(data) {
   console.log(data);
   console.log("removing player");
 };
 
 function newEnemy(data) {
-
+	console.log(data);
+	console.log("Enemy Added");
 };
 
 function moveEnemy(data) {
@@ -147,9 +146,9 @@ Q.component("stepControls", {
       // Check direction
       var stepDir;
       if (p.diffY > 0) {
-        stepDir = "up";
-      } else if (p.diffY < 0) {
         stepDir = "down";
+      } else if (p.diffY < 0) {
+        stepDir = "up";
       }
 
       if (p.diffX > 0) {
@@ -447,6 +446,8 @@ Q.component("stepControls", {
       this.on('hit',this,"changeDirection");
       this.on("step",this,"tryToFire");
       this.on("step",this,"animate")
+			
+			
     },
 
     animate: function() {
@@ -690,6 +691,7 @@ Q.component("stepControls", {
         this.destroy();
         //alert("Your suit has been compromised, you have been beamed. You can return in 10 seconds");
       }
+			socket.emit('player hit', { pHP: p.life, pSP: p.specialCanFire, pSPAmmo: p.specialBullets});
     },
 
     action: function() {
@@ -737,6 +739,7 @@ Q.component("stepControls", {
         p.specialBullets--;
         Q.stageScene('hud', 3, p);
       }
+			socket.emit('special', { po: p.direction, pAmmo: p.specialBullets, pA: p.specialCanFire });
     },
 
     fire: function() {
@@ -921,14 +924,23 @@ Q.component("stepControls", {
     var player = stage.insert(new Q.Player({ x: 1300, y: 1200 }));
     
     stage.insert(new Q.Enemy({ x: 1800, y: 1200 }));
+	//	socket.emit('new Enemy', { pid: '1', px: 1800, py: 1200});
     stage.insert(new Q.Enemy({ x: 1350, y: 1800 }));
+	//	socket.emit('new Enemy', { pid: '2', px: 1350, py: 1800});
     stage.insert(new Q.Enemy({ x: 1350, y: 3000 }));
+	//	socket.emit('new Enemy', { pid: '3', px: 1350, py: 3000});
     stage.insert(new Q.Enemy({ x: 500, y: 2000 }));
+	//	socket.emit('new Enemy', { pid: '4', px: 500, py: 2000});
     stage.insert(new Q.Enemy({ x: 600, y: 2000 }));
+	//	socket.emit('new Enemy', { pid: '5', px: 600, py: 2000});
     stage.insert(new Q.Enemy({ x: 700, y: 2000 }));
+	//	socket.emit('new Enemy', { pid: '6', px: 700, py: 2000});
     stage.insert(new Q.Enemy({ x: 1900, y: 100 }));
+	//	socket.emit('new Enemy', { pid: '7', px: 1900, py: 100});
     stage.insert(new Q.Enemy({ x: 200, y: 200 }));
+	//	socket.emit('new Enemy', { pid: '8', px: 200, py: 200});
     stage.insert(new Q.Enemy({ x: 300, y: 300 }));
+	//	socket.emit('new Enemy', { pid: '9', px: 300, py: 300});
     
     //Set viewport to follow player
     stage.add("viewport").follow(player);
