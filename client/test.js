@@ -1,31 +1,62 @@
 ///////////////////////////// SOCKET STUFF /////////////////////////////////////
 
-var socket = io.connect('http://' + document.location.host, { port: 12315, transports: ["websocket"]});
+var socket;
+//var player = new Player(1300, 1200);
+//Current player
+var currentPlayer;
+//All the other players
+var allPlayers;
 
-socket.on('connect', socketConnect);
-socket.on('disconnect', socketDisconnect);
-socket.on('new player', newPlayer);
-socket.on('move player', movePlayer);
-socket.on('remove player', removePlayer);
-socket.on('new enemy', newEnemy);
+init();
 
+function init(){
+	socket = io.connect('http://' + document.location.host, { port: 12315, transports: ["websocket"]});
+	//Sets default spawn coordinates
+	var xValue = 1300,
+				yValue = 1200;
+	//Create player object for client
+	currentPlayer = new Player(xValue, yValue);
+	allPlayers = [];
+	setEventHandlers();
+};
 
+function setEventHandlers() {
+
+	socket.on('connect', socketConnect);
+	socket.on('disconnect', socketDisconnect);
+	socket.on('new player', addNewPlayer);
+	socket.on('move player', movePlayer);
+	socket.on('remove player', removePlayer);
+	socket.on('new enemy', newEnemy);
+
+};
 function socketConnect() {
-  console.log("Connected to the socket server..." + data);
-  //socket.emit('new player', { px: })
+  console.log("Connected to the socket server...");
+	//sends new player request to server
+  socket.emit('new player', { x: currentPlayer.getX(), y: currentPlayer.getY() });
 };
 
 function socketDisconnect() {
   console.log("Disconnect from the socket server.");
 };
 
-function newPlayer(data) {
+function addNewPlayer(data) {
   console.log("new player joined...");
+	//add new player to client
+	var newPlayer = new Player(data.x, data.y);
+	newPlayer.id = data.id;
+	//push player to player list on client
+	allPlayers.push(newPlayer);
 };
 
 function movePlayer(data) {
   console.log(data);
   console.log("moving player");
+	//find moving player
+	var playerMove = findPlayer(data.id);
+	//change his coordinates
+	playerMove.setX(data.x);
+	playerMove.setY(data.y);
 };
 
 function removePlayer(data) {
@@ -54,6 +85,13 @@ function drawEnemyBullet(data) {
 
 };
 
+function findPlayer(id) {
+  for (var i = 0; i < allPlayers.length; i++) {
+    if (allPlayers[i].id == id) {
+      return allPlayers[i];
+    };
+  };
+};
 
 ///////////////////////////// SOCKET STUFF ABOVE ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +194,8 @@ Q.component("stepControls", {
       } else if (p.diffX < 0) {
         stepDir = "left";
       }
-      socket.emit('move player', { px: p.x, py: p.y, po: stepDir });
+			//Changed socket emit so that the data is consistent. Had to remove direction...
+      socket.emit('move player', { x: p.x, y: p.y });
     }
   }
 });

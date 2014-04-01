@@ -20,7 +20,9 @@ var app = http.createServer(function(request, response) {
 app.listen(12315);
 
 // Create the socket server 
-var io = require('socket.io').listen(app);
+var io = require('socket.io');//.listen(app);
+//Socket controller
+var socket;
 
 // player var
 var players;
@@ -35,26 +37,28 @@ init();
 
 // Here is the function to initialize everything else
 function init() {
-  players = [];
+	
+	players = [];
 	enemies = [];
-
-  io.configure(function(){
-    io.set("transports", ["websocket"]);
-    io.set("log level", 2);
+	socket = io.listen(app);
+  socket.configure(function(){
+    socket.set("transports", ["websocket"]);
+    socket.set("log level", 2);
   });
   setEventHandlers();
 };
 
 function setEventHandlers() {
-  io.sockets.on('connection', onSocketConnect);
+  socket.sockets.on('connection', onSocketConnect);
 };
 
 // Commands to perform upon connection, etc. 
 function onSocketConnect(client) {
   console.log("new client connected " + client.id);
+	//console.log("Current # of players" + players.length);
   
   client.on('disconnect', clientDisconnect);
-  client.on('new player', newPlayer);
+  client.on('new player', addNewPlayer);
   client.on('move player', movePlayer);
   client.on('fire bullet', fireBullet);
 	client.on('player hit', playerHit);
@@ -64,11 +68,20 @@ function onSocketConnect(client) {
 
 function clientDisconnect() {
   console.log("player disconnected " + this.id);
+	//console.log("Current # of players" + players.length);
+	//find player who disconnected
+	var disconnectPlayer = findPlayer(this.id);
+	//remove his punk ass
+	players.splice(players.indexOf(disconnectPlayer), 1);
+	
+	console.log("Current # of players" + players.length);
 };
 
 // This function creates our new player
-function newPlayer(data) {
+function addNewPlayer(data) {
   console.log(data);
+	console.log("Creating new player...");
+	
   // get the new Player data from our client
   var newPlayer = new Player(data.x, data.y);
   newPlayer.id = this.id;
@@ -85,22 +98,28 @@ function newPlayer(data) {
 
   // Here we add our new player to our players array
   players.push(newPlayer);
+	console.log("Current # of players" + players.length);
+
 };
 
 function movePlayer(data) {
-  console.log(this.id);
-  console.log(data);
+  
+  //console.log(data);
+	//console.log("Player moving...");
 
 
   // Find the player to move
- // var playerToMove = findPlayer(this.id);
-
+	console.log(this.id, " is moving...");
+	var playerToMove = findPlayer(this.id);
+	console.log("Start Coordinates: ", playerToMove.getX(), playerToMove.getY());
   // Set the new x and y for the player being moved
-  //playerToMove.setX(data.x);
-  //playerToMove.setY(data.y);
-
-//  this.broadcast.emit('move player', { pid: playerToMove.id, 
-//    px: playerToMove.px, py: playerToMove.py, po: playerToMove.po });
+	
+	//console.log("Moving by: ", data.x, data.y);
+  playerToMove.setX(data.x);
+  playerToMove.setY(data.y);
+	console.log("End Coordinates: ", playerToMove.getX(), playerToMove.getY());
+  this.broadcast.emit('move player', { pid: playerToMove.id, 
+    px: playerToMove.px, py: playerToMove.py, po: playerToMove.po });
 };
 
 function fireBullet(data) {
