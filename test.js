@@ -38,6 +38,7 @@ window.addEventListener("load",function() {
   Q.SPRITE_SPECIAL_BULLET = 8192;
   Q.SPRITE_SPECIAL = 16384;
   Q.SPRITE_EXPLOSION = 32768;
+  Q.SPRITE_KEY = 65536;
 
   var totalEnemiesKilled;
   var topDoor;
@@ -113,8 +114,23 @@ window.addEventListener("load",function() {
         sprite:"horizontalDoor",
         type: Q.SPRITE_DOOR,
         collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
-        sensor: true
       });
+      this.on("hit",this,"collision");
+    },
+
+    collision: function(col) {
+      var objP = col.obj.p;
+      if ((objP.type == Q.SPRITE_PLAYER) && objP.hasKey) 
+      {
+        objP.hasKey = false;
+        Q.stageScene('hud', 3, objP);
+        this.destroy();
+      }
+      else
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
     }
   });
 
@@ -125,8 +141,23 @@ window.addEventListener("load",function() {
         sprite:"verticalDoor",
         type: Q.SPRITE_DOOR,
         collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
-        sensor: true
       });
+      this.on("hit",this,"collision");
+    },
+
+    collision: function(col) {
+      var objP = col.obj.p;
+      if ((objP.type == Q.SPRITE_PLAYER) && objP.hasKey) 
+      {
+        objP.hasKey = false;
+        Q.stageScene('hud', 3, objP);
+        this.destroy();
+      }
+      else
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
     }
   });
 
@@ -275,6 +306,27 @@ window.addEventListener("load",function() {
     }
   });
 
+  Q.Sprite.extend("Key", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"key",
+        sprite:"key",
+        type: Q.SPRITE_KEY,
+        collisionMask: Q.SPRITE_PLAYER
+      });
+      this.add("2d");
+      this.on("hit.sprite",this,"collision");
+    },
+
+    //If the life collides with a player, destroy it, keep it on map otherwise
+    collision: function(col) {
+      var objP = col.obj.p;
+      if (objP.type == Q.SPRITE_PLAYER) {
+        this.destroy();
+      }
+    }
+  });
+
   //create the enemy object
   Q.Sprite.extend("Enemy", {
     init: function(p) {
@@ -291,7 +343,7 @@ window.addEventListener("load",function() {
         bulletInserted: false,
         collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_EXPLOSION
       });
-      this.add("2d, BasicAI, animation");
+      this.add("2d, animation");
       this.on("hit.sprite",this,"hit");
       this.on("step",this,"step");
       this.on('hit',this,"changeDirection");
@@ -344,6 +396,10 @@ window.addEventListener("load",function() {
         if (this.p.life == 0) 
         {
           totalEnemiesKilled++;
+          if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
+            this.stage.insert(new Q.Key({ x: 1300, y: 1200 }));
+          }
+
           life = this.stage.insert(new Q.Special({ x: this.p.x, y: this.p.y }));
           setTimeout(function(){life.destroy()},10000);
           this.destroy();
@@ -351,9 +407,14 @@ window.addEventListener("load",function() {
       }
       else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
       {
+        totalEnemiesKilled++;
+        if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
+          this.stage.insert(new Q.Key({ x: 1300, y: 1200 }));
+        }
+
         life = this.stage.insert(new Q.Special({ x: this.p.x, y: this.p.y }));
-          setTimeout(function(){life.destroy()},10000);
-          this.destroy();
+        setTimeout(function(){life.destroy()},10000);
+        this.destroy();
       }
     },
 
@@ -487,11 +548,12 @@ window.addEventListener("load",function() {
         bulletInserted: false,
         specialBulletInserted: false,
         specialCanFire: false,
+        hasKey: false,
         canFire: true,
         beenHit: false,
         enemiesKilled: 0,
         specialBullets: 0,
-        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL
+        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY
       });
 
       this.add("2d, stepControls, animation");
@@ -506,6 +568,10 @@ window.addEventListener("load",function() {
       var p = this.p;
       if (col.obj.isA("Life")) {
         p.life++;
+        Q.stageScene('hud', 3, p);
+      }
+      else if (col.obj.isA("Key")) {
+        p.hasKey = true;
         Q.stageScene('hud', 3, p);
       }
       else if(col.obj.isA("Special")) {
@@ -698,16 +764,19 @@ window.addEventListener("load",function() {
   Q.scene('hud',function(stage) {
   var container = stage.insert(new Q.UI.Container({x: 60, y: 0}));
 
-  var special = container.insert(new Q.UI.Text({x:240, y: 20,
+  var special = container.insert(new Q.UI.Text({x:180, y: 20,
     label: "Special: " + stage.options.special, color: "white" }));
 
-  var health = container.insert(new Q.UI.Text({x:60, y: 20,
+  var health = container.insert(new Q.UI.Text({x:30, y: 20,
     label: "Health: " + stage.options.life, color: "green" }));
 
-  var specialBullets = container.insert(new Q.UI.Text({x:470, y: 20,
+  var specialBullets = container.insert(new Q.UI.Text({x:380, y: 20,
     label: "Special Bullets: " + stage.options.specialBullets, color: "white" }));
 
-  var controls = container.insert(new Q.UI.Text({x:1000, y: 20,
+  var hasKey = container.insert(new Q.UI.Text({x:550, y: 20,
+    label: "Key: " + stage.options.hasKey, color: "white" }));
+
+  var controls = container.insert(new Q.UI.Text({x:1100, y: 20,
     label: "Move: WASD, Shoot: SPACEBAR, Special: 'J'", color: "white" }));
   container.fit(20);
 });
@@ -758,23 +827,24 @@ window.addEventListener("load",function() {
     level2IsRunning = true;
     stage.insert(new Q.TileLayer({ dataAsset: 'level2Background.json', sheet: 'tiles', type: Q.SPRITE_NONE }));
     stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level2Collision.json', sheet: 'tiles', type: Q.SPRITE_TILES }));
-    /*
-    topDoor = stage.insert(new Q.horizontalDoor({ x: 1300, y: 800 }));
-    bottomDoor = stage.insert(new Q.horizontalDoor({ x: 1300, y: 1800 }));
-    leftDoor = stage.insert(new Q.verticalDoor({ x: 900, y: 1200 }));
-    rightDoor = stage.insert(new Q.verticalDoor({ x: 2000, y: 1200 }));
-    */
+    
+    topDoor = stage.insert(new Q.horizontalDoor({ x: 1328, y: 880 }));
+    bottomDoor = stage.insert(new Q.horizontalDoor({ x: 1328, y: 1647 }));
+    leftDoor = stage.insert(new Q.verticalDoor({ x: 816, y: 1264 }));
+    rightDoor = stage.insert(new Q.verticalDoor({ x: 1840, y: 1264 }));
+    
     var player = stage.insert(new Q.Player({ x: 1300, y: 1200 }));
     
-    stage.insert(new Q.Enemy({ x: 1800, y: 1200 }));
-    stage.insert(new Q.Enemy({ x: 1350, y: 1800 }));
-    stage.insert(new Q.Enemy({ x: 1350, y: 3000 }));
-    stage.insert(new Q.Enemy({ x: 500, y: 2000 }));
-    stage.insert(new Q.Enemy({ x: 600, y: 2000 }));
-    stage.insert(new Q.Enemy({ x: 700, y: 2000 }));
-    stage.insert(new Q.Enemy({ x: 1900, y: 100 }));
-    stage.insert(new Q.Enemy({ x: 200, y: 200 }));
-    stage.insert(new Q.Enemy({ x: 300, y: 300 }));
+    stage.insert(new Q.Enemy({ x: 1800, y: 1200 })); // spawn room
+    stage.insert(new Q.Enemy({ x: 1350, y: 1800 })); //bottom
+    stage.insert(new Q.Enemy({ x: 1350, y: 2000 })); //bottom 
+    stage.insert(new Q.Enemy({ x: 2000, y: 1200 })); //right
+    stage.insert(new Q.Enemy({ x: 500, y: 2000 })); //left
+    stage.insert(new Q.Enemy({ x: 600, y: 2000 })); //left
+    stage.insert(new Q.Enemy({ x: 700, y: 2000 })); //left
+    stage.insert(new Q.Enemy({ x: 200, y: 200 })); //top
+    stage.insert(new Q.Enemy({ x: 300, y: 300 })); //top
+    stage.insert(new Q.Enemy({ x: 2000, y: 300 })); //top
     
     //Set viewport to follow player
     stage.add("viewport").follow(player);
