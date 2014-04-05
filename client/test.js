@@ -120,7 +120,7 @@ var allPlayers;
 init();
 
 function init(){
-	socket = io.connect('http://' + document.location.host, { port: 12315, transports: ["websocket"]});
+	socket = io.connect('http://' + document.location.host, { port: 80, transports: ["websocket"]});
 	//Sets default spawn coordinates
 	var xValue = 1300,
 				yValue = 1200;
@@ -153,12 +153,13 @@ function socketDisconnect() {
 function addNewPlayer(data) {
   console.log("new player joined...");
 	//add new player to client
-	var newPlayer = new Player(data.x, data.y);
-	newPlayer.id = data.id;
+//	var newPlayer = new Player(data.x, data.y);
+	//newPlayer.id = data.id;
 	//push player to player list on client
+  var newPlayer = new Q.OtherPlayer({ x: data.x, y: data.y, id: data.id });
 	allPlayers.push(newPlayer);
-  var player2 = new Q.OtherPlayer({ x: data.x, y: data.y, id: newPlayer.id })
-  Q.stage().insert(player2);
+  Q.stage().insert(new Q.OtherPlayer({ x: data.x, y: data.y + moveY, id: data.id }));
+  
 };
 
 function movePlayer(data) {
@@ -169,7 +170,9 @@ function movePlayer(data) {
 	//change his coordinates
 	// playerMove.setX(data.x);
 	// playerMove.setY(data.y);
-
+ // var playerMove2 = Q.stage().locate(data.pxs, data.pys, Q.SPRITE_PLAYER);
+  Q("OtherPlayer").set({x: data.px, y: data.py});
+socket.emit('debug', { x: data.px, y: data.py});
 };
 
 function removePlayer(data) {
@@ -315,6 +318,8 @@ function findPlayer(id) {
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// GAME STUFF ///////////////////////////////////
 
+///////////////////// SPRITE VALUES AND OTHER SETTINGS /////////////////////////
+
 	// Set the gravity to zero since this is a top down game
 	Q.gravityY = 0;
 	Q.gravityX = 0;
@@ -336,6 +341,7 @@ function findPlayer(id) {
   Q.SPRITE_SPECIAL_BULLET = 8192;
   Q.SPRITE_SPECIAL = 16384;
   Q.SPRITE_EXPLOSION = 32768;
+  Q.SPRITE_KEY = 65536;
 
   var totalEnemiesKilled;
   var topDoor;
@@ -343,67 +349,46 @@ function findPlayer(id) {
   var leftDoor;
   var rightDoor;
   var level2IsRunning = false;
-
+  var moveX = 0;
+  var moveY = 640;
+  
+/////////////////// SPRITE VALUES AND OTHER SETTINGS ABOVE /////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////// ENTITIES AND ACTIONS //////////////////////////////
 
-  Q.Sprite.extend("Level1Trees1", {
+//////////////////////////// TREES AND ENVIRONMENT /////////////////////////////
+
+  Q.Sprite.extend("Tree1", {
     init: function(p) {
       this._super(p,{
-        sheet:"level1Trees1",
-        sprite:"level1Trees1",
+        sheet:"tree1",
+        sprite:"tree1",
         type: Q.SPRITE_TREES,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
-        sensor: true
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_PLAYER_BULLET | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_ENEMY_BULLET
       });
+      this.on("hit",this,"collision");
+    },
+
+    collision: function(col) {
+      this.p.x -= col.separate[0];
+      this.p.y -= col.separate[1];
     }
   });
 
-  Q.Sprite.extend("Level1Trees2", {
+  Q.Sprite.extend("Tree2", {
     init: function(p) {
       this._super(p,{
-        sheet:"level1Trees2",
-        sprite:"level1Trees2",
+        sheet:"tree2",
+        sprite:"tree2",
         type: Q.SPRITE_TREES,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
-        sensor: true
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_PLAYER_BULLET | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_ENEMY_BULLET
       });
-    }
-  });
+      this.on("hit",this,"collision");
+    },
 
-  Q.Sprite.extend("Level1Trees3", {
-    init: function(p) {
-      this._super(p,{
-        sheet:"level1Trees3",
-        sprite:"level1Trees3",
-        type: Q.SPRITE_TREES,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
-        sensor: true
-      });
-    }
-  });
-
-  Q.Sprite.extend("Level1Trees4", {
-    init: function(p) {
-      this._super(p,{
-        sheet:"level1Trees4",
-        sprite:"level1Trees4",
-        type: Q.SPRITE_TREES,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
-        sensor: true
-      });
-    }
-  });
-
-  Q.Sprite.extend("Level1Trees5", {
-    init: function(p) {
-      this._super(p,{
-        sheet:"level1Trees5",
-        sprite:"level1Trees5",
-        type: Q.SPRITE_TREES,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
-        sensor: true
-      });
+    collision: function(col) {
+      this.p.x -= col.separate[0];
+      this.p.y -= col.separate[1];
     }
   });
 
@@ -414,8 +399,23 @@ function findPlayer(id) {
         sprite:"horizontalDoor",
         type: Q.SPRITE_DOOR,
         collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
-        sensor: true
       });
+      this.on("hit",this,"collision");
+    },
+
+    collision: function(col) {
+      var objP = col.obj.p;
+      if ((objP.type == Q.SPRITE_PLAYER) && (objP.keys > 0))
+      {
+        objP.keys--;
+        Q.stageScene('hud', 3, objP);
+        this.destroy();
+      }
+      else
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
     }
   });
 
@@ -426,11 +426,30 @@ function findPlayer(id) {
         sprite:"verticalDoor",
         type: Q.SPRITE_DOOR,
         collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
-        sensor: true
       });
+      this.on("hit",this,"collision");
+    },
+
+    collision: function(col) {
+      var objP = col.obj.p;
+      if ((objP.type == Q.SPRITE_PLAYER) && (objP.keys > 0))
+      {
+        objP.keys--;
+        Q.stageScene('hud', 3, objP);
+        this.destroy();
+      }
+      else
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
     }
   });
 
+/////////////////////// TREES AND ENVIRONMENT ABOVE ////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/////////////////////////// AMMUNITION AND DROPS ///////////////////////////////
+  
   //Set up the animations for the player, reading frames from sprites.png
   Q.animations("playerBullet", {
     playerLight: {frames:[0,1,2,3,4,4,4,3,2,1,0], rate: 1/6, loop: true},
@@ -443,7 +462,7 @@ function findPlayer(id) {
         sheet:"playerBullet",
         sprite:"playerBullet",
         type: Q.SPRITE_PLAYER_BULLET,
-        collisionMask: Q.SPRITE_ENEMY | Q.SPRITE_TILES | Q.SPRITE_DOOR
+        collisionMask: Q.SPRITE_ENEMY | Q.SPRITE_TILES | Q.SPRITE_DOOR | Q.SPRITE_TREES
       });
       this.add("2d, animation");
       this.on("hit",this,"collision");
@@ -453,7 +472,7 @@ function findPlayer(id) {
     animate: function() {
       this.play("playerLight");
     },
-    //destory the bullet if it hits an enemy or player
+    //destroy the bullet if it hits an enemy or player
     collision: function(col) {
       this.destroy();
     }
@@ -495,7 +514,7 @@ function findPlayer(id) {
         sheet:"specialBullet",
         sprite:"specialBullet",
         type: Q.SPRITE_SPECIAL_BULLET,
-        collisionMask: Q.SPRITE_ENEMY | Q.SPRITE_TILES | Q.SPRITE_DOOR
+        collisionMask: Q.SPRITE_ENEMY | Q.SPRITE_TILES | Q.SPRITE_DOOR | Q.SPRITE_TREES
       });
       this.add("2d, animation");
       this.on("hit",this,"collision");
@@ -505,7 +524,7 @@ function findPlayer(id) {
     animate: function() {
       this.play("specialLight");
     },
-    // destroy the bullet if it hits an enemy or player
+    //destroy the bullet if it hits an enemy or player
     collision: function(col) {
       //this.play("explode");
       this.stage.insert(new Q.Explosion({ x: this.p.x, y: this.p.y }));
@@ -520,16 +539,16 @@ function findPlayer(id) {
         sheet:"enemyBullet",
         sprite:"enemyBullet",
         type: Q.SPRITE_ENEMY_BULLET,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_TILES | Q.SPRITE_DOOR
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_TILES | Q.SPRITE_DOOR | Q.SPRITE_TREES
       });
       this.add("2d");
       this.on("hit",this,"collision");
     },
 
-    // destory the bullet if it hits an enemy or player
+    //destroy the bullet if it hits an enemy or player
     collision: function(col) {
       this.destroy();
-    } 
+    }
   });
 
   // create the life object
@@ -554,12 +573,11 @@ function findPlayer(id) {
     }
   });
 
-  //create the life object
-  Q.Sprite.extend("Special", {
+  Q.Sprite.extend("SpecialGun", {
     init: function(p) {
       this._super(p,{
-        sheet:"special",
-        sprite:"special",
+        sheet:"specialGun",
+        sprite:"specialGun",
         type: Q.SPRITE_SPECIAL,
         collisionMask: Q.SPRITE_PLAYER
       });
@@ -576,16 +594,101 @@ function findPlayer(id) {
     }
   });
 
+  Q.Sprite.extend("SpecialSpeed", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"specialSpeed",
+        sprite:"specialSpeed",
+        type: Q.SPRITE_SPECIAL,
+        collisionMask: Q.SPRITE_PLAYER
+      });
+      this.add("2d");
+      this.on("hit.sprite",this,"collision");
+    },
+
+    //If the life collides with a player, destroy it, keep it on map otherwise
+    collision: function(col) {
+      var objP = col.obj.p;
+      if (objP.type == Q.SPRITE_PLAYER) {
+        this.destroy();
+      }
+    }
+  });
+
+  Q.Sprite.extend("SpecialInvincibility", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"specialInvincibility",
+        sprite:"specialInvincibility",
+        type: Q.SPRITE_SPECIAL,
+        collisionMask: Q.SPRITE_PLAYER
+      });
+      this.add("2d");
+      this.on("hit.sprite",this,"collision");
+    },
+
+    //If the life collides with a player, destroy it, keep it on map otherwise
+    collision: function(col) {
+      var objP = col.obj.p;
+      if (objP.type == Q.SPRITE_PLAYER) {
+        this.destroy();
+      }
+    }
+  });
+
+  Q.Sprite.extend("Key", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"key",
+        sprite:"key",
+        type: Q.SPRITE_KEY,
+        collisionMask: Q.SPRITE_PLAYER
+      });
+      this.add("2d");
+      this.on("hit.sprite",this,"collision");
+    },
+
+    //If the life collides with a player, destroy it, keep it on map otherwise
+    collision: function(col) {
+      var objP = col.obj.p;
+      if (objP.type == Q.SPRITE_PLAYER) {
+        this.destroy();
+      }
+    }
+  });
+
+///////////////////////// AMMUNITION AND DROPS ABOVE ///////////////////////////
+
 //////////////////////// ENTITIES AND ACTIONS ABOVE ////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////// ENEMY ////////////////////////////////////
 
-
+  Q.animations("enemy", {
+    enemy_fire_right_running: {frames:[10,11,9,11,10], rate: 1/10},
+    enemy_fire_left_running: {frames:[23,22,21,22,23], rate: 1/10},
+    enemy_fire_front_running: {frames:[4,5], rate: 1/3},
+    enemy_fire_back_running: {frames:[16,17], rate: 1/3},
+    enemy_fire_standing_right: {frames:[9], rate: 1/3},
+    enemy_fire_standing_left: {frames:[21], rate: 1/3},
+    enemy_fire_standing_front: {frames:[3], rate: 1/3},
+    enemy_fire_standing_back: {frames:[15], rate: 1/3},
+    enemy_run_right: {frames:[7,6,8,6,7], rate: 1/10},
+    enemy_run_left: {frames:[18,19,20,19,18], rate: 1/10},
+    enemy_run_front: {frames:[0,1], rate: 1/3},
+    enemy_run_back: {frames:[12,13], rate: 1/3},
+    enemy_stand_right: {frames:[8], rate: 1/3},
+    enemy_stand_left: {frames:[20], rate: 1/3},
+    enemy_stand_front: {frames:[2], rate: 1/3},
+    enemy_stand_back: {frames:[14], rate: 1/3},
+    enemy_die:{frames:[24], rate: 1/5}
+  });
+  
   //create the enemy object
   Q.Sprite.extend("Enemy", {
     init: function(p) {
       this._super(p,{
-        sheet:"player",
-        sprite:"player",
+        sheet:"enemy",
+        sprite:"enemy",
         life: 5, //change the life to something reasonable once we get things going
         bulletSpeed: 600,
         speed: 200,
@@ -596,71 +699,118 @@ function findPlayer(id) {
         bulletInserted: false,
         collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_EXPLOSION
       });
-      this.add("2d, BasicAI, animation");
+      this.add("2d, animation");
       this.on("hit.sprite",this,"hit");
       this.on("step",this,"step");
       this.on('hit',this,"changeDirection");
       this.on("step",this,"tryToFire");
       this.on("step",this,"animate")
-			
-			
     },
 
     animate: function() {
       var p = this.p;
       if (p.direction == "right") {
         if (!p.canFire) {
-          this.play("fire_right_running");
+          this.play("enemy_fire_right_running");
         }
         else {
-          this.play("run_right")
+          this.play("enemy_run_right")
         }
         
       }
       else if (p.direction == "left") {
         if (!p.canFire) {
-          this.play("fire_left_running");
+          this.play("enemy_fire_left_running");
         }
         else {
-          this.play("run_left")
+          this.play("enemy_run_left")
         }
       }
       else if (p.direction == "up") {
         if (!p.canFire) {
-          this.play("fire_back_running");
+          this.play("enemy_fire_back_running");
         }
         else {
-          this.play("run_back")
+          this.play("enemy_run_back")
         }
       }
       else if (p.direction == "down" && !p.canFire) {
         if (!p.canFire) {
-          this.play("fire_front_running");
+          this.play("enemy_fire_front_running");
         }
         else {
-          this.play("run_front")
+          this.play("enemy_run_front")
         }
       }
     },
 
     hit: function(col) {
       var life;
-      if(col.obj.isA("PlayerBullet")) 
+      if(col.obj.isA("PlayerBullet"))
       {
         this.p.life--;
-        if (this.p.life == 0) 
+        if (this.p.life == 0)
         {
           totalEnemiesKilled++;
-          life = this.stage.insert(new Q.Special({ x: this.p.x, y: this.p.y }));
-          setTimeout(function(){life.destroy()},10000);
+          if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
+            this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
+          }
+          
+          //generate a random value to determine whether to drop a life or special
+          var lifeOrSpecial = Math.floor((Math.random()*2)+1);
+
+          if (lifeOrSpecial == 1)
+          {
+            life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
+            setTimeout(function(){life.destroy()},10000);
+          }
+          else if (lifeOrSpecial == 2)
+          {
+            var oneOfTheSpecials = Math.floor((Math.random()*3)+1);
+            switch(oneOfTheSpecials)
+            {
+              case 1: this.stage.insert(new Q.SpecialGun({ x: this.p.x, y: this.p.y }));
+                break;
+              case 2: this.stage.insert(new Q.SpecialSpeed({ x: this.p.x, y: this.p.y }));
+                break;
+              case 3: this.stage.insert(new Q.SpecialInvincibility({ x: this.p.x, y: this.p.y }));
+                break;
+            }
+          }
+          
           this.destroy();
         }
       }
       else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
       {
-        life = this.stage.insert(new Q.Special({ x: this.p.x, y: this.p.y }));
+        totalEnemiesKilled++;
+        if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
+          this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
+        }
+
+        //generate a random value to determine whether to drop a life or special
+        var lifeOrSpecial = Math.floor((Math.random()*2)+1);
+
+        if (lifeOrSpecial == 1)
+        {
+          life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
           setTimeout(function(){life.destroy()},10000);
-          this.destroy();
+        }
+        else
+        {
+          var oneOfTheSpecials = Math.floor((Math.random()*3)+1);
+          switch(oneOfTheSpecials)
+          {
+            case 1: this.stage.insert(new Q.SpecialGun({ x: this.p.x, y: this.p.y }));
+              break;
+            case 2: this.stage.insert(new Q.SpecialSpeed({ x: this.p.x, y: this.p.y }));
+              break;
+            case 3: this.stage.insert(new Q.SpecialInvincibility({ x: this.p.x, y: this.p.y }));
+              break;
+          }
+        }
+        
+        this.destroy();
       }
     },
 
@@ -688,12 +838,12 @@ function findPlayer(id) {
         x = this.p.x + 10;
         y = this.p.y + 60;
       }
-      var dx =  Math.sin(angle * Math.PI / 180),
+      var dx = Math.sin(angle * Math.PI / 180),
           dy = -Math.cos(angle * Math.PI / 180);
       p.bulletInserted = true;
       //Insert the bullet into the stage
       this.stage.insert(
-        new Q.EnemyBullet({ x: x, 
+        new Q.EnemyBullet({ x: x,
                        y: y,
                        vx: dx * p.bulletSpeed,
                        vy: dy * p.bulletSpeed
@@ -715,7 +865,7 @@ function findPlayer(id) {
       switch(p.direction) {
         case "left": p.vx = -p.speed; break;
         case "right":p.vx = p.speed; break;
-        case "up":   p.vy = -p.speed; break;
+        case "up": p.vy = -p.speed; break;
         case "down": p.vy = p.speed; break;
       }
     },
@@ -723,7 +873,7 @@ function findPlayer(id) {
     // Try a random direction 90 degrees away from the 
     // current direction of movement
     tryDirection: function() {
-      var p = this.p; 
+      var p = this.p;
       var from = p.direction;
       if(p.vy != 0 && p.vx == 0) {
         p.direction = Math.random() < 0.5 ? 'left' : 'right';
@@ -752,7 +902,7 @@ function findPlayer(id) {
       if(!player)
         return;
       if (player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x) {
-        //this.fire();
+        this.fire();
       }
       
     },
@@ -797,20 +947,18 @@ function findPlayer(id) {
         bulletInserted: false,
         specialBulletInserted: false,
         specialCanFire: false,
+        keys: 0,
         canFire: true,
         beenHit: false,
         enemiesKilled: 0,
         specialBullets: 0,
-        id:"",
-        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL,
+        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY
       });
 
       this.add("2d, stepControls, animation");
       Q.input.on("fire",this,"fire");
-      Q.input.on("action",this,"action");
+      Q.input.on("specialGun",this,"specialGun");
       this.on("hit.sprite",this,"hit");
-
-      
     },
     
     hit: function(col) {
@@ -820,23 +968,27 @@ function findPlayer(id) {
         p.life++;
         Q.stageScene('hud', 3, p);
       }
-      else if(col.obj.isA("Special")) {
-        //If the player picks up a special, change internal special variable to
-        //true, that way when the player hits the action button the special 
-        //will work. change it back to false after 10 sec so it doesnt work anymore
-        p.special = true;
-        p.specialCanFire = true;
-        p.specialBullets = 5;
+      else if (col.obj.isA("Key")) {
+        p.keys++;
         Q.stageScene('hud', 3, p);
-       // socket.emit('updatePlayer', { pa: '1'});
-        setTimeout(function(){
-          p.special = false,
-          p.specialCanFire = false,
-          p.specialBullets = 0,
-          Q.stageScene('hud', 3, p)
-        //  socket.emit('updatePlayer', { pa: '0'});
-        },10000);
-        
+      }
+      else if(col.obj.isA("SpecialSpeed")) {
+        p.stepDelay = 0.05;
+        p.bulletSpeed = 1300;
+        setTimeout(function(){p.stepDelay = 0.1;
+                              p.bulletSpeed = 1000;}, 10000);
+      }
+      else if(col.obj.isA("SpecialGun")) {
+        p.specialCanFire = true;
+        p.specialBullets += 5;
+        Q.stageScene('hud', 3, p);
+      }
+      else if(col.obj.isA("SpecialInvincibility")) {
+        var currentLife = p.life;
+        p.life = 100;
+        Q.stageScene('hud', 3, p);
+        setTimeout(function(){p.life = currentLife;
+                              Q.stageScene('hud', 3, p);}, 10000);
       }
       else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet")) && !p.beenHit) {
         p.beenHit = true;
@@ -849,21 +1001,19 @@ function findPlayer(id) {
 
       if (p.life == 0) {
         this.destroy();
-        //alert("Your suit has been compromised, you have been beamed. You can return in 10 seconds");
       }
+
 			socket.emit('player hit', { pHP: p.life, pSP: p.specialCanFire, pSPAmmo: p.specialBullets});
     },
 
-    action: function() {
+    specialGun: function() {
       var p = this.p;
       var angle, x, y;
       if (!p.specialCanFire)
         return;
       p.specialCanFire = false;
       //check to see if he has the special and if he still has bullets
-      if (p.special && p.specialBullets) {
-        //send a bullet
-        
+      if (p.specialBullets) {
         //See what direction the player is in and set the bullet to go that way
         if (p.direction == "left") {
           angle = -90;
@@ -882,12 +1032,12 @@ function findPlayer(id) {
           x = this.p.x + 10;
           y = this.p.y + 60;
         }
-        var dx =  Math.sin(angle * Math.PI / 180),
+        var dx = Math.sin(angle * Math.PI / 180),
             dy = -Math.cos(angle * Math.PI / 180);
         p.specialBulletInserted = true;
         //Insert the bullet into the stage
         this.stage.insert(
-          new Q.SpecialBullet({ x: x, 
+          new Q.SpecialBullet({ x: x,
                          y: y,
                          vx: dx * p.bulletSpeed,
                          vy: dy * p.bulletSpeed
@@ -926,12 +1076,12 @@ function findPlayer(id) {
         x = this.p.x + 10;
         y = this.p.y + 60;
       }
-      var dx =  Math.sin(angle * Math.PI / 180),
+      var dx = Math.sin(angle * Math.PI / 180),
           dy = -Math.cos(angle * Math.PI / 180);
       p.bulletInserted = true;
       //Insert the bullet into the stage
       this.stage.insert(
-        new Q.PlayerBullet({ x: x, 
+        new Q.PlayerBullet({ x: x,
                        y: y,
                        vx: dx * p.bulletSpeed,
                        vy: dy * p.bulletSpeed
@@ -1234,16 +1384,16 @@ function findPlayer(id) {
   Q.scene('hud',function(stage) {
   var container = stage.insert(new Q.UI.Container({x: 60, y: 0}));
 
-  var special = container.insert(new Q.UI.Text({x:240, y: 20,
-    label: "Special: " + stage.options.special, color: "white" }));
-
-  var health = container.insert(new Q.UI.Text({x:60, y: 20,
+  var health = container.insert(new Q.UI.Text({x:30, y: 20,
     label: "Health: " + stage.options.life, color: "green" }));
 
-  var specialBullets = container.insert(new Q.UI.Text({x:470, y: 20,
+  var specialBullets = container.insert(new Q.UI.Text({x:380, y: 20,
     label: "Special Bullets: " + stage.options.specialBullets, color: "white" }));
 
-  var controls = container.insert(new Q.UI.Text({x:1000, y: 20,
+  var hasKey = container.insert(new Q.UI.Text({x:545, y: 20,
+    label: "Keys: " + stage.options.keys, color: "white" }));
+
+  var controls = container.insert(new Q.UI.Text({x:1100, y: 20,
     label: "Move: WASD, Shoot: SPACEBAR, Special: 'J'", color: "white" }));
   container.fit(20);
 });
@@ -1260,16 +1410,14 @@ function findPlayer(id) {
   //First level
   Q.scene("level1",function(stage) {
     totalEnemiesKilled = 0;
-    //stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level1Collision.json', sheet: 'tiles', type: Q.SPRITE_TILES }));
+    stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level1Collision.json', sheet: 'tiles', type: Q.SPRITE_TILES }));
     stage.insert(new Q.TileLayer({ dataAsset: 'level1Background.json', sheet: 'tiles', type: Q.SPRITE_NONE }));
 
     var player = stage.insert(new Q.Player({ x: 700, y: 700 }));
     var enemy = stage.insert(new Q.Enemy({ x: 1000, y: 1000 }));
-    var trees1 = stage.insert(new Q.Level1Trees1({ x: 485, y: 100 }));
-    var trees2 = stage.insert(new Q.Level1Trees2({ x: 300, y: 291 }));
-    var trees3 = stage.insert(new Q.Level1Trees3({ x: 90, y: 431 }));
-    var trees4 = stage.insert(new Q.Level1Trees4({ x: 145, y: 554 }));
-    var trees5 = stage.insert(new Q.Level1Trees5({ x: 117, y: 815 }));
+    stage.insert(new Q.Tree1({ x: 500, y: 500 }));
+    stage.insert(new Q.Tree2({ x: 400, y: 400 }));
+
 
     //Set viewport to follow player
     stage.add("viewport").follow(player);
@@ -1280,13 +1428,13 @@ function findPlayer(id) {
     
     //When the enemies have been defeated display label
     stage.on("step",function() {
-      if(Q("Enemy").length == 0 && !Q.stage(1)) 
-      { 
-        Q.stageScene("endGame",1, { label: "You Win!" }); 
-      } 
-      else if(Q("Player").length == 0 && !Q.stage(1)) 
-      { 
-        Q.stageScene("endGame",1, { label: "You Lose!" }); 
+      if(Q("Enemy").length == 0 && !Q.stage(1))
+      {
+        Q.stageScene("endGame",1, { label: "You Win!" });
+      }
+      else if(Q("Player").length == 0 && !Q.stage(1))
+      {
+        Q.stageScene("endGame",1, { label: "You Lose!" });
       }
     });
     
@@ -1294,50 +1442,59 @@ function findPlayer(id) {
 
   //Second level
   Q.scene("level2",function(stage) {
+    //variables to keep track of enemies killed and to let the certain functions
+    //know that level2 is running.
     totalEnemiesKilled = 0;
     level2IsRunning = true;
+
+    //insert the collision layer and background layer
     stage.insert(new Q.TileLayer({ dataAsset: 'level2Background.json', sheet: 'tiles', type: Q.SPRITE_NONE }));
     stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level2Collision.json', sheet: 'tiles', type: Q.SPRITE_TILES }));
-    /*
-    topDoor = stage.insert(new Q.horizontalDoor({ x: 1300, y: 800 }));
-    bottomDoor = stage.insert(new Q.horizontalDoor({ x: 1300, y: 1800 }));
-    leftDoor = stage.insert(new Q.verticalDoor({ x: 900, y: 1200 }));
-    rightDoor = stage.insert(new Q.verticalDoor({ x: 2000, y: 1200 }));
-    */
-    var player = stage.insert(new Q.Player({ x: 1300, y: 1200 }));
     
- /*   stage.insert(new Q.Enemy({ x: 1800, y: 1200 }));
-	//	socket.emit('new Enemy', { pid: '1', px: 1800, py: 1200});
-    stage.insert(new Q.Enemy({ x: 1350, y: 1800 }));
-	//	socket.emit('new Enemy', { pid: '2', px: 1350, py: 1800});
-    stage.insert(new Q.Enemy({ x: 1350, y: 3000 }));
-	//	socket.emit('new Enemy', { pid: '3', px: 1350, py: 3000});
-    stage.insert(new Q.Enemy({ x: 500, y: 2000 }));
-	//	socket.emit('new Enemy', { pid: '4', px: 500, py: 2000});
-    stage.insert(new Q.Enemy({ x: 600, y: 2000 }));
-	//	socket.emit('new Enemy', { pid: '5', px: 600, py: 2000});
-    stage.insert(new Q.Enemy({ x: 700, y: 2000 }));
-	//	socket.emit('new Enemy', { pid: '6', px: 700, py: 2000});
-    stage.insert(new Q.Enemy({ x: 1900, y: 100 }));
-	//	socket.emit('new Enemy', { pid: '7', px: 1900, py: 100});
-    stage.insert(new Q.Enemy({ x: 200, y: 200 }));
-	//	socket.emit('new Enemy', { pid: '8', px: 200, py: 200});
-    stage.insert(new Q.Enemy({ x: 300, y: 300 }));
-	//	socket.emit('new Enemy', { pid: '9', px: 300, py: 300});*/
+    //insert the trees
+    stage.insert(new Q.Tree1({ x: 200, y: 100 })); //top left
+    stage.insert(new Q.Tree2({ x: 150, y: 200 })); //top left
+    stage.insert(new Q.Tree1({ x: 150, y: 550 }));
+    stage.insert(new Q.Tree1({ x: 2200, y: 100 }));
+    stage.insert(new Q.Tree1({ x: 1000, y: 1350 }));
+    stage.insert(new Q.Tree1({ x: 2050, y: 1600 }));
+    stage.insert(new Q.Tree2({ x: 2150, y: 1600 }));
+    stage.insert(new Q.Tree1({ x: 2350, y: 1600 }));
+
+    //insert the doors
+    topDoor = stage.insert(new Q.horizontalDoor({ x: 1328, y: 880 + moveY}));
+    bottomDoor = stage.insert(new Q.horizontalDoor({ x: 1328, y: 1647 + moveY}));
+    leftDoor = stage.insert(new Q.verticalDoor({ x: 816, y: 1264 + moveY}));
+    rightDoor = stage.insert(new Q.verticalDoor({ x: 1840, y: 1264 + moveY}));
+    
+    //insert the player
+    var player = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
+    
+    //insert the enemies
+    stage.insert(new Q.Enemy({ x: 1800, y: 1200 + moveY})); // spawn room
+    stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
+    stage.insert(new Q.Enemy({ x: 1350, y: 2000 + moveY})); //bottom
+    stage.insert(new Q.Enemy({ x: 2000, y: 1200 + moveY})); //right
+    stage.insert(new Q.Enemy({ x: 500, y: 2000 + moveY})); //left
+    stage.insert(new Q.Enemy({ x: 600, y: 2000 + moveY})); //left
+    stage.insert(new Q.Enemy({ x: 700, y: 2000 + moveY})); //left
+    stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY})); //top
+    stage.insert(new Q.Enemy({ x: 300, y: 300 + moveY})); //top
+    stage.insert(new Q.Enemy({ x: 2000, y: 300 + moveY})); //top
     
     //Set viewport to follow player
     stage.add("viewport").follow(player);
 
     //When the enemies have been defeated display label
- /*   stage.on("step",function() {
-          if(Q("Enemy").length == 0 && !Q.stage(1)) { 
+    stage.on("step",function() {
+          if(Q("Enemy").length == 0 && !Q.stage(1)) {
             level2IsRunning = false;
-            Q.stageScene("endGame",1, { label: "You Win!" }); 
-          } else if(Q("Player").length == 0 && !Q.stage(1)) { 
+            Q.stageScene("endGame",1, { label: "You Win!" });
+          } else if(Q("Player").length == 0 && !Q.stage(1)) {
             level2IsRunning = false;
-            Q.stageScene("endGame",1, { label: "You Lose!" }); 
+            Q.stageScene("endGame",1, { label: "You Lose!" });
           }
-        });*/
+        });
 
   });
 
@@ -1348,10 +1505,10 @@ function findPlayer(id) {
     }));
 
     var restartButton = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
-                                                   label: "Restart Level" })) 
+                                                   label: "Restart Level" }))
     var mainMenuButton = container.insert(new Q.UI.Button({ x: 0, y: 80, fill: "#CCCCCC",
-                                                   label: "Main Menu (Does Nothing)" }))        
-    var label = container.insert(new Q.UI.Text({x:8, y: - 10 - restartButton.p.h, 
+                                                   label: "Main Menu (Does Nothing)" }))
+    var label = container.insert(new Q.UI.Text({x:8, y: - 10 - restartButton.p.h,
                                  label: stage.options.label }));
     
     // When the buttons are clicked, clear all the stages
@@ -1370,9 +1527,10 @@ function findPlayer(id) {
     container.fit(20);
   });
 
-  ///Load and start the level
+
+  // Load and start the level
   Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png, redScreen.json, level2Collision.json, level2Background.json", function() {
-    Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
+    Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 });
     Q.compileSheets("sprites.png","sprites.json");
     Q.stageScene("level2");
     Q.stageScene('hud', 3, Q('Player').first().p);
