@@ -64,7 +64,12 @@ function onSocketConnect(client) {
 	client.on('player hit', playerHit);
 	client.on('special', playerSpecialStatus);
 	client.on('new enemy', newEnemy);
+  client.on('debug', debugOut);
 };
+
+function debugOut(data) {
+  console.log("-- DEBUG -- " + data.x + " " + data.y);
+}
 
 function clientDisconnect() {
   console.log("player disconnected " + this.id);
@@ -115,11 +120,13 @@ function movePlayer(data) {
   // Set the new x and y for the player being moved
 	
 	//console.log("Moving by: ", data.x, data.y);
+  var xs = playerToMove.getX();
+  var ys = playerToMove.getY();
   playerToMove.setX(data.x);
   playerToMove.setY(data.y);
 	console.log("End Coordinates: ", playerToMove.getX(), playerToMove.getY());
   this.broadcast.emit('move player', { pid: playerToMove.id, 
-    px: playerToMove.px, py: playerToMove.py, po: playerToMove.po });
+    px: data.x, py: data.y, pxs: xs, pys: ys, po: playerToMove.po });
 };
 
 function fireBullet(data) {
