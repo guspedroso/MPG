@@ -235,6 +235,8 @@ window.addEventListener("load",function() {
 
     //destory the bullet if it hits an enemy or player
     collision: function(col) {
+      this.p.x -= col.separate[0];
+      this.p.y -= col.separate[1];
       this.destroy();
     }
   });
@@ -522,13 +524,11 @@ window.addEventListener("load",function() {
         
         this.destroy();
       }
-      /*
       else if(col.obj.isA("Player"))
       {
         this.p.x -= col.separate[0];
         this.p.y -= col.separate[1];
       }
-      */
     },
 
     fire: function() {
