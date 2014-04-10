@@ -2,8 +2,9 @@ window.addEventListener("load",function() {
 
   var Q = window.Q = Quintus({ development: true })
           .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI")
-          .setup({ maximize:true }) 
-          .controls().touch()
+          Q.setup({ maximize:true }) 
+          .controls(true)
+          .touch(Q.SPRITE_ALL);
 
   //Add in the default keyboard controls
   //along with joypad controls for touch
@@ -12,7 +13,11 @@ window.addEventListener("load",function() {
     68: "right",
     87: "up",
     83: "down",
-    74: "specialGun",
+    74: "fireLeft",
+    75: "fireDown",
+    76: "fireRight",
+    73: "fireUp",
+    32: "specialGun",
 
   });
   Q.input.joypadControls();
@@ -22,6 +27,7 @@ window.addEventListener("load",function() {
 	Q.gravityY = 0;
 	Q.gravityX = 0;
 
+  //Set the types for the entities, for collision. Need to be powers of 2
   Q.SPRITE_NONE = 0;
   Q.SPRITE_PLAYER = 1;
   Q.SPRITE_TILES = 2;
@@ -40,23 +46,26 @@ window.addEventListener("load",function() {
   Q.SPRITE_SPECIAL = 16384;
   Q.SPRITE_EXPLOSION = 32768;
   Q.SPRITE_KEY = 65536;
+  Q.SPRITE_OTHER_PLAYER = 131072;
 
-  var totalEnemiesKilled;
-  var topDoor;
+  var totalEnemiesKilled; //Keep track of enemies killed
+  var topDoor; //Declare variables for the doors, to remove them later
   var bottomDoor;
   var leftDoor;
   var rightDoor;
-  var level2IsRunning = false;
-  var moveX = 0;
+  var level2IsRunning = false; //So the functions execute properly
+  var moveX = 0; //If we need to move all the entities on the board consistently
   var moveY = 640;
+  var totalKeys = 0; //Once the player has gotten all the keys, open the boss door
 
+  //Tree object 1 for the enviroment
   Q.Sprite.extend("Tree1", {
     init: function(p) {
       this._super(p,{
         sheet:"tree1",
         sprite:"tree1",
         type: Q.SPRITE_TREES,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_PLAYER_BULLET | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_ENEMY_BULLET
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_PLAYER_BULLET | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_OTHER_PLAYER
       });
       this.on("hit",this,"collision");
     },
@@ -67,13 +76,14 @@ window.addEventListener("load",function() {
     }
   });
 
+  //Tree object 2 for the enviroment
   Q.Sprite.extend("Tree2", {
     init: function(p) {
       this._super(p,{
         sheet:"tree2",
         sprite:"tree2",
         type: Q.SPRITE_TREES,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_PLAYER_BULLET | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_ENEMY_BULLET
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_PLAYER_BULLET | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_OTHER_PLAYER
       });
       this.on("hit",this,"collision");
     },
@@ -84,20 +94,21 @@ window.addEventListener("load",function() {
     }
   });
 
+  //horizontal door object 
   Q.Sprite.extend("horizontalDoor", {
     init: function(p) {
       this._super(p,{
         sheet:"horizontalDoor",
         sprite:"horizontalDoor",
         type: Q.SPRITE_DOOR,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_OTHER_PLAYER
       });
       this.on("hit",this,"collision");
     },
 
     collision: function(col) {
       var objP = col.obj.p;
-      if ((objP.type == Q.SPRITE_PLAYER) && (objP.keys > 0)) 
+      if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && (objP.keys > 0)) 
       {
         objP.keys--;
         Q.stageScene('hud', 3, objP);
@@ -111,20 +122,21 @@ window.addEventListener("load",function() {
     }
   });
 
+  //vertical door object 
   Q.Sprite.extend("verticalDoor", {
     init: function(p) {
       this._super(p,{
         sheet:"verticalDoor",
         sprite:"verticalDoor",
         type: Q.SPRITE_DOOR,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY,
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_OTHER_PLAYER
       });
       this.on("hit",this,"collision");
     },
 
     collision: function(col) {
       var objP = col.obj.p;
-      if ((objP.type == Q.SPRITE_PLAYER) && (objP.keys > 0)) 
+      if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && (objP.keys > 0)) 
       {
         objP.keys--;
         Q.stageScene('hud', 3, objP);
@@ -138,7 +150,7 @@ window.addEventListener("load",function() {
     }
   });
 
-  //Set up the animations for the player, reading frames from sprites.png
+  //Animations for the player bullet, reading frames from playerBullet in sprites.png
   Q.animations("playerBullet", {
     playerLight: {frames:[0,1,2,3,4,4,4,3,2,1,0], rate: 1/6, loop: true},
   });
@@ -157,19 +169,22 @@ window.addEventListener("load",function() {
       this.on("step",this,"animate");
     },
 
+    //This is a function to animate the bullet as it flies, plays the animation
     animate: function() {
       this.play("playerLight");
     },
-    //destory the bullet if it hits an enemy or player
+    //destroy the bullet if it hits anything
     collision: function(col) {
       this.destroy();
     }
   });
 
+  //Animations for the explosion that happens after the special bullet collides
   Q.animations("explosion", {
     explode: {frames:[0,1,2,3,4,5], rate: 1/4, loop: false},
   });
 
+  //Explosion object that is inserted after the special bullet collides
   Q.Sprite.extend("Explosion", {
     init: function(p) {
       this._super(p,{
@@ -182,6 +197,7 @@ window.addEventListener("load",function() {
       this.on("step",this,"animate");
     },
 
+    //This function will animate and then destroy itself after the animation completes
     animate: function() {
       var p = this;
       this.play("explode");
@@ -190,7 +206,7 @@ window.addEventListener("load",function() {
     },
   });
 
-  //Set up the animations for the player, reading frames from sprites.png
+  //Animations for the special bullet, reading frames from specialBullet in sprites.png
   Q.animations("specialBullet", {
     specialLight: {frames:[0,1,2,3,4,4,4,3,2,1,0], rate: 1/6, loop: true},
   });
@@ -208,32 +224,31 @@ window.addEventListener("load",function() {
       this.on("hit",this,"collision");
       this.on("step",this,"animate");
     },
-
+    //play the animation for the bullet as it flies
     animate: function() {
       this.play("specialLight");
     },
-    //destory the bullet if it hits an enemy or player
+    //destroy the bullet if it hits anything
     collision: function(col) {
-      //this.play("explode");
       this.stage.insert(new Q.Explosion({ x: this.p.x, y: this.p.y }));
       this.destroy();
     }
   });
 
-  //create the bullet object
+  //create the enemy bullet object
   Q.Sprite.extend("EnemyBullet", {
     init: function(p) {
       this._super(p,{
         sheet:"enemyBullet",
         sprite:"enemyBullet",
         type: Q.SPRITE_ENEMY_BULLET,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_TILES | Q.SPRITE_DOOR | Q.SPRITE_TREES
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_TILES | Q.SPRITE_DOOR | Q.SPRITE_TREES | Q.SPRITE_OTHER_PLAYER
       });
       this.add("2d");
       this.on("hit",this,"collision");
     },
 
-    //destory the bullet if it hits an enemy or player
+    //Destroy the bullet if it hits anything
     collision: function(col) {
       this.p.x -= col.separate[0];
       this.p.y -= col.separate[1];
@@ -248,7 +263,7 @@ window.addEventListener("load",function() {
         sheet:"life",
         sprite:"life",
         type: Q.SPRITE_LIFE,
-        collisionMask: Q.SPRITE_PLAYER
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_OTHER_PLAYER
       });
       this.add("2d");
       this.on("hit.sprite",this,"collision");
@@ -257,41 +272,42 @@ window.addEventListener("load",function() {
     //If the life collides with a player, destroy it, keep it on map otherwise
     collision: function(col) {
       var objP = col.obj.p;
-      if (objP.type == Q.SPRITE_PLAYER) {
+      if ((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
       }
     }
   });
 
-  //create the life object
+  //create the special gun object
   Q.Sprite.extend("SpecialGun", {
     init: function(p) {
       this._super(p,{
         sheet:"specialGun",
         sprite:"specialGun",
         type: Q.SPRITE_SPECIAL,
-        collisionMask: Q.SPRITE_PLAYER
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_OTHER_PLAYER
       });
       this.add("2d");
       this.on("hit.sprite",this,"collision");
     },
 
-    //If the life collides with a player, destroy it, keep it on map otherwise
+    //If the special collides with a player, destroy it, keep it on map otherwise
     collision: function(col) {
       var objP = col.obj.p;
-      if (objP.type == Q.SPRITE_PLAYER) {
+      if ((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
       }
     }
   });
 
+  //create the special speed object
   Q.Sprite.extend("SpecialSpeed", {
     init: function(p) {
       this._super(p,{
         sheet:"specialSpeed",
         sprite:"specialSpeed",
         type: Q.SPRITE_SPECIAL,
-        collisionMask: Q.SPRITE_PLAYER
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_OTHER_PLAYER
       });
       this.add("2d");
       this.on("hit.sprite",this,"collision");
@@ -300,19 +316,20 @@ window.addEventListener("load",function() {
     //If the life collides with a player, destroy it, keep it on map otherwise
     collision: function(col) {
       var objP = col.obj.p;
-      if (objP.type == Q.SPRITE_PLAYER) {
+      if ((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
       }
     }
   });
 
+  //create the special invincibility object
   Q.Sprite.extend("SpecialInvincibility", {
     init: function(p) {
       this._super(p,{
         sheet:"specialInvincibility",
         sprite:"specialInvincibility",
         type: Q.SPRITE_SPECIAL,
-        collisionMask: Q.SPRITE_PLAYER
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_OTHER_PLAYER
       });
       this.add("2d");
       this.on("hit.sprite",this,"collision");
@@ -321,19 +338,20 @@ window.addEventListener("load",function() {
     //If the life collides with a player, destroy it, keep it on map otherwise
     collision: function(col) {
       var objP = col.obj.p;
-      if (objP.type == Q.SPRITE_PLAYER) {
+      if ((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
       }
     }
   });
 
+  //create the special invisibility object
   Q.Sprite.extend("SpecialInvisibility", {
     init: function(p) {
       this._super(p,{
         sheet:"specialInvisibility",
         sprite:"specialInvisibility",
         type: Q.SPRITE_SPECIAL,
-        collisionMask: Q.SPRITE_PLAYER
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_OTHER_PLAYER
       });
       this.add("2d");
       this.on("hit.sprite",this,"collision");
@@ -342,19 +360,20 @@ window.addEventListener("load",function() {
     //If the life collides with a player, destroy it, keep it on map otherwise
     collision: function(col) {
       var objP = col.obj.p;
-      if (objP.type == Q.SPRITE_PLAYER) {
+      if ((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
       }
     }
   });
 
+  //Key object
   Q.Sprite.extend("Key", {
     init: function(p) {
       this._super(p,{
         sheet:"key",
         sprite:"key",
         type: Q.SPRITE_KEY,
-        collisionMask: Q.SPRITE_PLAYER
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_OTHER_PLAYER
       });
       this.add("2d");
       this.on("hit.sprite",this,"collision");
@@ -363,13 +382,13 @@ window.addEventListener("load",function() {
     //If the life collides with a player, destroy it, keep it on map otherwise
     collision: function(col) {
       var objP = col.obj.p;
-      if (objP.type == Q.SPRITE_PLAYER) {
+      if ((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
       }
     }
   });
 
-    //Set up the animations for the player, reading frames from sprites.png
+  //Set up the animations for the enemy, reading frames from enemy in sprites.png
   Q.animations("enemy", {
     enemy_fire_right_running: {frames:[10,11,9,11,10], rate: 1/10},
     enemy_fire_left_running: {frames:[23,22,21,22,23], rate: 1/10},
@@ -404,7 +423,7 @@ window.addEventListener("load",function() {
         type: Q.SPRITE_ENEMY,
         canFire: true,
         bulletInserted: false,
-        collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_EXPLOSION
+        collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_EXPLOSION | Q.SPRITE_OTHER_PLAYER
       });
       this.add("2d, animation");
       this.on("hit.sprite",this,"hit");
@@ -524,7 +543,7 @@ window.addEventListener("load",function() {
         
         this.destroy();
       }
-      else if(col.obj.isA("Player"))
+      else if(col.obj.isA("Player") || col.obj.isA("OtherPlayer"))
       {
         this.p.x -= col.separate[0];
         this.p.y -= col.separate[1];
@@ -603,7 +622,7 @@ window.addEventListener("load",function() {
     // try moving in a direction 90 away from the normal
     changeDirection: function(col) {
       var p = this.p;
-      if(col.obj.isA("Player"))
+      if(col.obj.isA("Player") || col.obj.isA("OtherPlayer"))
       {
         return;
       }
@@ -620,22 +639,23 @@ window.addEventListener("load",function() {
     tryToFire: function() {
       var p = this.p;
       var player = Q("Player").first();
+      var otherPlayer = Q("OtherPlayer").first();
      
       if(!player)
         return;
-      if (player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y < p.y && !player.p.invisible) {
+      if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y < p.y && !player.p.invisible)) {
         p.direction = "up";
         this.fire();
       }
-      else if (player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y > p.y && !player.p.invisible) {
+      else if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y > p.y && !player.p.invisible)) {
         p.direction = "down";
         this.fire();
       }
-      else if (player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x < p.x && !player.p.invisible) {
+      else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x < p.x && !player.p.invisible)) {
         p.direction = "left";
         this.fire();
       }
-      else if (player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x > p.x && !player.p.invisible) {
+      else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x > p.x && !player.p.invisible)) {
         p.direction = "right";
         this.fire();
       }
@@ -693,7 +713,10 @@ window.addEventListener("load",function() {
         life: 10,
         bulletSpeed: 1000,
         special: false,
-        bulletInserted: false,
+        leftbulletInserted: false,
+        rightbulletInserted: false,
+        upbulletInserted: false,
+        downbulletInserted: false,
         specialBulletInserted: false,
         specialCanFire: false,
         specialInvisibilityCount: 0,
@@ -705,15 +728,23 @@ window.addEventListener("load",function() {
         invisible: false,
         enemiesKilled: 0,
         specialBullets: 0,
-        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY
+        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY | Q.SPRITE_OTHER_PLAYER
       });
 
       this.add("2d, stepControls, animation");
-      Q.input.on("fire",this,"fire");
+      Q.input.on("fireRight",this,"fireRight");
+      Q.input.on("fireLeft",this,"fireLeft");
+      Q.input.on("fireDown",this,"fireDown");
+      Q.input.on("fireUp",this,"fireUp");
       Q.input.on("specialGun",this,"specialGun");
       this.on("hit.sprite",this,"hit");
+      this.on("touchEnd",this,"fire");
     },
-    
+
+    click: function(touch) {
+    alert("what the ");
+    },
+
     hit: function(col) {
       var red;
       var p = this.p;
@@ -723,6 +754,7 @@ window.addEventListener("load",function() {
       }
       else if (col.obj.isA("Key")) {
         p.keys++;
+        totalKeys++;
         Q.stageScene('hud', 3, p);
       }
       else if(col.obj.isA("SpecialSpeed")) {
@@ -755,13 +787,12 @@ window.addEventListener("load",function() {
       }
       else if(col.obj.isA("SpecialInvincibility")) {
         p.specialInvincibilityCount++;
-        var currentLife = p.life;
         p.life = 100;
         Q.stageScene('hud', 3, p);
         setTimeout(function(){
           p.specialInvincibilityCount--;
           if (p.specialInvincibilityCount == 0) {
-            p.life = currentLife;
+            p.life = 10;
             Q.stageScene('hud', 3, p);
           }
         }, 10000);
@@ -832,6 +863,588 @@ window.addEventListener("load",function() {
       p.specialCanJesus = false;
     },
 
+    fireLeft: function() {
+      var p = this.p;
+      var angle, x, y;
+      if (!p.canFire)
+        return;
+      p.canFire = false;
+      p.direction = "left";
+      angle = -90;
+      x = this.p.x - 47;
+      y = this.p.y + 2;
+
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+      p.leftbulletInserted = true;
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.PlayerBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
+      setTimeout(function() { p.leftbulletInserted = false}, 80);
+      setTimeout(function() { p.canFire = true}, 200);
+    },
+    fireRight: function() {
+      var p = this.p;
+      var angle, x, y;
+      if (!p.canFire)
+        return;
+      p.canFire = false;
+      p.direction = "right";
+      angle = 90;
+      x = this.p.x + 47;
+      y = this.p.y + 2;
+
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+      p.rightbulletInserted = true;
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.PlayerBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
+      setTimeout(function() { p.rightbulletInserted = false}, 80);
+      setTimeout(function() { p.canFire = true}, 200);
+    },
+    fireUp: function() {
+      var p = this.p;
+      var angle, x, y;
+      if (!p.canFire)
+        return;
+      p.canFire = false;
+      
+      p.direction = "up";
+      angle = 0;
+      x = this.p.x - 8;
+      y = this.p.y - 60;
+
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+      p.upbulletInserted = true;
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.PlayerBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
+      setTimeout(function() { p.upbulletInserted = false}, 80);
+      setTimeout(function() { p.canFire = true}, 200);
+    },
+    fireDown: function() {
+      var p = this.p;
+      var angle, x, y;
+      if (!p.canFire)
+        return;
+      p.canFire = false;
+      p.direction = "down";
+      angle = 180;
+      x = this.p.x + 10;
+      y = this.p.y + 60;
+
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+      p.downbulletInserted = true;
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.PlayerBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
+      setTimeout(function() { p.downbulletInserted = false}, 80);
+      setTimeout(function() { p.canFire = true}, 200);
+    },
+    
+    //step function for controlling how this sprite will move
+    step: function(dt) {
+      //Grab the input and determine which animation to play
+      if(Q.inputs["right"]) {
+        //set the direction of the player depending on the input
+        this.p.direction = "right";
+
+        //play the fire animation if input reads that the player is firing,
+        //else just play the running animation
+        if (this.p.specialBulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_right_running");
+          }
+          else {
+            this.play("fire_right_running");
+          }
+          
+        }
+        else if (this.p.leftbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_left_running")
+          }
+          else {
+            this.play("fire_left_running")
+          }
+        }
+        else if (this.p.rightbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_right_running")
+          }
+          else {
+            this.play("fire_right_running")
+          }
+        }
+        else if (this.p.upbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_back_running")
+          }
+          else {
+            this.play("fire_back_running")
+          }
+        }
+        else if (this.p.downbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_front_running")
+          }
+          else {
+            this.play("fire_front_running")
+          }
+        }
+        else {
+          if (this.p.invisible) {
+            this.play("invisible_run_right");
+          }
+          else {
+            this.play("run_right");
+          }
+          
+        }
+      } else if(Q.inputs["left"]) {
+        this.p.direction = "left";
+        if (this.p.specialBulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_left_running")
+          }
+          else {
+            this.play("fire_left_running")
+          }
+        }
+        else if (this.p.leftbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_left_running")
+          }
+          else {
+            this.play("fire_left_running")
+          }
+        }
+        else if (this.p.rightbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_right_running")
+          }
+          else {
+            this.play("fire_right_running")
+          }
+        }
+        else if (this.p.upbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_back_running")
+          }
+          else {
+            this.play("fire_back_running")
+          }
+        }
+        else if (this.p.downbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_front_running")
+          }
+          else {
+            this.play("fire_front_running")
+          }
+        }
+        else {
+          if (this.p.invisible) {
+            this.play("invisible_run_left");
+          }
+          else {
+            this.play("run_left");
+          }
+          
+        }
+      }
+      else if(Q.inputs["up"]) {
+        this.p.direction = "up";
+        if (this.p.specialBulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_back_running")
+          }
+          else {
+            this.play("fire_back_running")
+          }
+        }
+        else if (this.p.leftbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_left_running")
+          }
+          else {
+            this.play("fire_left_running")
+          }
+        }
+        else if (this.p.rightbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_right_running")
+          }
+          else {
+            this.play("fire_right_running")
+          }
+        }
+        else if (this.p.upbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_back_running")
+          }
+          else {
+            this.play("fire_back_running")
+          }
+        }
+        else if (this.p.downbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_front_running")
+          }
+          else {
+            this.play("fire_front_running")
+          }
+        }
+        else {
+          if (this.p.invisible) {
+            this.play("invisible_run_back");
+          }
+          else {
+            this.play("run_back");
+          }
+          
+        }
+      } else if(Q.inputs["down"]) {
+        this.p.direction = "down";
+        if (this.p.specialBulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_front_running")
+          }
+          else {
+            this.play("fire_front_running")
+          }
+        }
+        else if (this.p.leftbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_left_running")
+          }
+          else {
+            this.play("fire_left_running")
+          }
+        }
+        else if (this.p.rightbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_right_running")
+          }
+          else {
+            this.play("fire_right_running")
+          }
+        }
+        else if (this.p.upbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_back_running")
+          }
+          else {
+            this.play("fire_back_running")
+          }
+        }
+        else if (this.p.downbulletInserted) {
+          if (this.p.invisible) {
+            this.play("invisible_fire_front_running")
+          }
+          else {
+            this.play("fire_front_running")
+          }
+        }
+        else {
+          if (this.p.invisible) {
+            this.play("invisible_run_front");
+          }
+          else {
+            this.play("run_front");
+          }
+        }
+      }
+      else {
+        if (this.p.specialBulletInserted || this.p.downbulletInserted || this.p.upbulletInserted || this.p.leftbulletInserted || this.p.rightbulletInserted) {
+          if (this.p.direction == "right") {
+            if (this.p.invisible) {
+              this.play("invisible_fire_standing_right"); 
+            }
+            else {
+              this.play("fire_standing_right"); 
+            }
+          } else if (this.p.direction == "left") {
+            if (this.p.invisible) {
+              this.play("invisible_fire_standing_left");
+            }
+            else {
+              this.play("fire_standing_left");
+            }
+          } else if (this.p.direction == "up") {
+            if (this.p.invisible) {
+              this.play("invisible_fire_standing_back");
+            }
+            else {
+              this.play("fire_standing_back");
+            }
+          } else if (this.p.direction == "down") {
+            if (this.p.invisible) {
+              this.play("invisible_fire_standing_front");
+            }
+            else {
+              this.play("fire_standing_front");
+            }
+          }
+          
+        }
+        else {
+          if (this.p.direction == "right") {
+            if (this.p.invisible) {
+              this.play("invisible_stand_right"); 
+            }
+            else {
+              this.play("stand_right"); 
+            }
+          } else if (this.p.direction == "left") {
+            if (this.p.invisible) {
+              this.play("invisible_stand_left"); 
+            }
+            else {
+              this.play("stand_left"); 
+            }
+          } else if (this.p.direction == "up") {
+            if (this.p.invisible) {
+              this.play("invisible_stand_back"); 
+            }
+            else {
+              this.play("stand_back"); 
+            }
+          } else if (this.p.direction == "down") {
+            if (this.p.invisible) {
+              this.play("invisible_stand_front"); 
+            }
+            else {
+              this.play("stand_front"); 
+            }
+          }
+        }
+      }
+    },
+  });
+/*
+  Q.el.addEventListener('mousemove',function(e) {
+    var x = e.offsetX || e.layerX,
+        y = e.offsetY || e.layerY,
+        stage = Q.stage();
+    var stageX = Q.canvasToStageX(x, stage),
+        stageY = Q.canvasToStageY(y, stage);
+
+    var obj = stage.locate(stageX,stageY);
+
+    if(currentObj) { currentObj.p.over = false; }
+    if(obj) {
+      currentObj = obj;
+      obj.p.over = true;
+
+
+      }
+  });
+*/
+  //Set up the animations for the other player, reading frames from otherPlayer in sprites.png
+  Q.animations("otherPlayer", {
+    other_fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
+    other_fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
+    other_fire_front_running: {frames:[4,5], rate: 1/4},
+    other_fire_back_running: {frames:[16,17], rate: 1/4},
+    other_fire_standing_right: {frames:[9], rate: 1/4},
+    other_fire_standing_left: {frames:[21], rate: 1/4},
+    other_fire_standing_front: {frames:[3], rate: 1/4},
+    other_fire_standing_back: {frames:[15], rate: 1/4},
+    other_run_right: {frames:[7,6,8,6,7], rate: 1/15},
+    other_run_left: {frames:[18,19,20,19,18], rate: 1/15},
+    other_run_front: {frames:[0,1], rate: 1/5},
+    other_run_back: {frames:[12,13], rate: 1/5},
+    other_stand_right: {frames:[8], rate: 1/5},
+    other_stand_left: {frames:[20], rate: 1/5},
+    other_stand_front: {frames:[2], rate: 1/5},
+    other_stand_back: {frames:[14], rate: 1/5},
+    other_die:{frames:[24], rate: 1/5},
+    other_invisible_fire_right_running: {frames:[35,36,34,36,35], rate: 1/15},
+    other_invisible_fire_left_running: {frames:[48,47,46,47,48], rate: 1/15},
+    other_invisible_fire_front_running: {frames:[29,30], rate: 1/4},
+    other_invisible_fire_back_running: {frames:[41,42], rate: 1/4},
+    other_invisible_fire_standing_right: {frames:[34], rate: 1/4},
+    other_invisible_fire_standing_left: {frames:[46], rate: 1/4},
+    other_invisible_fire_standing_front: {frames:[28], rate: 1/4},
+    other_invisible_fire_standing_back: {frames:[40], rate: 1/4},
+    other_invisible_run_right: {frames:[32,31,33,31,32], rate: 1/15},
+    other_invisible_run_left: {frames:[43,44,45,44,43], rate: 1/15},
+    other_invisible_run_front: {frames:[25,26], rate: 1/5},
+    other_invisible_run_back: {frames:[37,38], rate: 1/5},
+    other_invisible_stand_right: {frames:[33], rate: 1/5},
+    other_invisible_stand_left: {frames:[45], rate: 1/5},
+    other_invisible_stand_front: {frames:[27], rate: 1/5},
+    other_invisible_stand_back: {frames:[39], rate: 1/5},
+    other_invisible_die:{frames:[49], rate: 1/5},
+  });
+
+  //Create the other player object
+  Q.Sprite.extend("OtherPlayer", {
+    init: function(p) {
+
+      this._super(p,{
+        sheet:"otherPlayer",
+        sprite:"otherPlayer",
+        type: Q.SPRITE_OTHER_PLAYER,
+        stepDelay: 0.1,
+        life: 10,
+        bulletSpeed: 1000,
+        special: false,
+        bulletInserted: false,
+        specialBulletInserted: false,
+        specialCanFire: false,
+        specialInvisibilityCount: 0,
+        specialInvincibilityCount: 0,
+        specialSpeedCount: 0,
+        keys: 0,
+        canFire: true,
+        beenHit: false,
+        invisible: false,
+        enemiesKilled: 0,
+        specialBullets: 0,
+        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY | Q.SPRITE_PLAYER
+      });
+
+      this.add("2d, animation");
+      //Q.input.on("fire",this,"fire");
+      //Q.input.on("specialGun",this,"specialGun");
+      this.on("hit.sprite",this,"hit");
+    },
+    
+    hit: function(col) {
+      var red;
+      var p = this.p;
+      if (col.obj.isA("Life")) {
+        p.life++;
+      }
+      else if (col.obj.isA("Key")) {
+        p.keys++;
+      }
+      else if(col.obj.isA("SpecialSpeed")) {
+        p.specialSpeedCount++;
+        p.stepDelay = 0.05;
+        p.bulletSpeed = 1300;
+        setTimeout(function(){
+          p.specialSpeedCount--;
+          if (p.specialSpeedCount == 0) {
+            p.bulletSpeed = 1000;
+            p.stepDelay = 0.1;
+          }
+        }, 10000);
+      }
+      else if(col.obj.isA("SpecialInvisibility")) {
+        p.specialInvisibilityCount++;
+        p.invisible = true;
+        setTimeout(function(){
+          p.specialInvisibilityCount--;
+          if(p.specialInvisibilityCount == 0) {
+            p.invisible = false;
+          }
+        }, 10000);
+        
+      }
+      else if(col.obj.isA("SpecialGun")) {
+        p.specialCanFire = true;
+        p.specialBullets += 5;
+      }
+      else if(col.obj.isA("SpecialInvincibility")) {
+        p.specialInvincibilityCount++;
+        p.life = 100;
+        setTimeout(function(){
+          p.specialInvincibilityCount--;
+          if (p.specialInvincibilityCount == 0) {
+            p.life = 10;
+          }
+        }, 10000);
+      }
+      else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet")) && !p.beenHit) {
+        p.beenHit = true;
+        p.life--;
+        red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: Q.SPRITE_RED }));
+        setTimeout(function(){red.destroy()},200);
+        setTimeout(function(){p.beenHit = false}, 200);
+      }
+
+      if (p.life == 0) {
+        this.destroy();
+      }
+    },
+
+    specialGun: function() {
+      var p = this.p;
+      var angle, x, y;
+      if (!p.specialCanFire)
+        return;
+      p.specialCanFire = false;
+      //check to see if he has the special and if he still has bullets
+      if (p.specialBullets) {          
+        //See what direction the player is in and set the bullet to go that way
+        if (p.direction == "left") {
+          angle = -90;
+          x = this.p.x - 47;
+          y = this.p.y + 2;
+        } else if (p.direction == "right") {
+          angle = 90;
+          x = this.p.x + 47;
+          y = this.p.y + 2;
+        } else if (p.direction == "up") {
+          angle = 0;
+          x = this.p.x - 8;
+          y = this.p.y - 60;
+        } else if (p.direction == "down") {
+          angle = 180;
+          x = this.p.x + 10;
+          y = this.p.y + 60;
+        }
+        var dx =  Math.sin(angle * Math.PI / 180),
+            dy = -Math.cos(angle * Math.PI / 180);
+        p.specialBulletInserted = true;
+        //Insert the bullet into the stage
+        this.stage.insert(
+          new Q.SpecialBullet({ x: x, 
+                         y: y,
+                         vx: dx * p.bulletSpeed,
+                         vy: dy * p.bulletSpeed
+                  })
+        );
+        setTimeout(function() { p.specialBulletInserted = false}, 80);
+        setTimeout(function() { p.specialCanFire = true}, 200);
+        //decrement amount of available bullets
+        p.specialBullets--;
+      }
+    },
+
+    SpecialInvincibility: function() {
+      var p = this.p;
+      if (!p.specialCanJesus)
+        return;
+      p.specialCanJesus = false;
+    },
+
     fire: function() {
       var p = this.p;
       var angle, x, y;
@@ -882,19 +1495,19 @@ window.addEventListener("load",function() {
         //else just play the running animation
         if ((Q.inputs["fire"] && this.p.bulletInserted) || this.p.specialBulletInserted) {
           if (this.p.invisible) {
-            this.play("invisible_fire_right_running");
+            this.play("other_invisible_fire_right_running");
           }
           else {
-            this.play("fire_right_running");
+            this.play("other_fire_right_running");
           }
           
         }
         else {
           if (this.p.invisible) {
-            this.play("invisible_run_right");
+            this.play("other_invisible_run_right");
           }
           else {
-            this.play("run_right");
+            this.play("other_run_right");
           }
           
         }
@@ -902,15 +1515,15 @@ window.addEventListener("load",function() {
         this.p.direction = "left";
         if ((Q.inputs["fire"] && this.p.bulletInserted) || this.p.specialBulletInserted) {
           if (this.p.invisible) {
-            this.play("invisible_fire_left_running")
+            this.play("other_invisible_fire_left_running")
           }
           else {
-            this.play("fire_left_running")
+            this.play("other_fire_left_running")
           }
         }
         else {
           if (this.p.invisible) {
-            this.play("invisible_run_left");
+            this.play("other_invisible_run_left");
           }
           else {
             this.play("run_left");
@@ -922,18 +1535,18 @@ window.addEventListener("load",function() {
         this.p.direction = "up";
         if ((Q.inputs['fire'] && this.p.bulletInserted) || this.p.specialBulletInserted) {
           if (this.p.invisible) {
-            this.play("invisible_fire_back_running")
+            this.play("other_invisible_fire_back_running")
           }
           else {
-            this.play("fire_back_running")
+            this.play("other_fire_back_running")
           }
         }
         else {
           if (this.p.invisible) {
-            this.play("invisible_run_back");
+            this.play("other_invisible_run_back");
           }
           else {
-            this.play("run_back");
+            this.play("other_run_back");
           }
           
         }
@@ -941,18 +1554,18 @@ window.addEventListener("load",function() {
         this.p.direction = "down";
         if ((Q.inputs["fire"] && this.p.bulletInserted) || this.p.specialBulletInserted) {
           if (this.p.invisible) {
-            this.play("invisible_fire_front_running")
+            this.play("other_invisible_fire_front_running")
           }
           else {
-            this.play("fire_front_running")
+            this.play("other_fire_front_running")
           }
         }
         else {
           if (this.p.invisible) {
-            this.play("invisible_run_front");
+            this.play("other_invisible_run_front");
           }
           else {
-            this.play("run_front");
+            this.play("other_run_front");
           }
         }
       }
@@ -960,31 +1573,31 @@ window.addEventListener("load",function() {
         if ((Q.inputs["fire"] && this.p.bulletInserted ) || this.p.specialBulletInserted) {
           if (this.p.direction == "right" && (this.p.bulletInserted || this.p.specialBulletInserted)) {
             if (this.p.invisible) {
-              this.play("invisible_fire_standing_right"); 
+              this.play("other_invisible_fire_standing_right"); 
             }
             else {
-              this.play("fire_standing_right"); 
+              this.play("other_fire_standing_right"); 
             }
           } else if (this.p.direction == "left" && (this.p.bulletInserted || this.p.specialBulletInserted)) {
             if (this.p.invisible) {
-              this.play("invisible_fire_standing_left");
+              this.play("other_invisible_fire_standing_left");
             }
             else {
-              this.play("fire_standing_left");
+              this.play("other_fire_standing_left");
             }
           } else if (this.p.direction == "up" && (this.p.bulletInserted || this.p.specialBulletInserted)) {
             if (this.p.invisible) {
-              this.play("invisible_fire_standing_back");
+              this.play("other_invisible_fire_standing_back");
             }
             else {
-              this.play("fire_standing_back");
+              this.play("other_fire_standing_back");
             }
           } else if (this.p.direction == "down" && (this.p.bulletInserted || this.p.specialBulletInserted)) {
             if (this.p.invisible) {
-              this.play("invisible_fire_standing_front");
+              this.play("other_invisible_fire_standing_front");
             }
             else {
-              this.play("fire_standing_front");
+              this.play("other_fire_standing_front");
             }
           }
           
@@ -992,38 +1605,38 @@ window.addEventListener("load",function() {
         else {
           if (this.p.direction == "right") {
             if (this.p.invisible) {
-              this.play("invisible_stand_right"); 
+              this.play("other_invisible_stand_right"); 
             }
             else {
-              this.play("stand_right"); 
+              this.play("other_stand_right"); 
             }
           } else if (this.p.direction == "left") {
             if (this.p.invisible) {
-              this.play("invisible_stand_left"); 
+              this.play("other_invisible_stand_left"); 
             }
             else {
-              this.play("stand_left"); 
+              this.play("other_stand_left"); 
             }
           } else if (this.p.direction == "up") {
             if (this.p.invisible) {
-              this.play("invisible_stand_back"); 
+              this.play("other_invisible_stand_back"); 
             }
             else {
-              this.play("stand_back"); 
+              this.play("other_stand_back"); 
             }
           } else if (this.p.direction == "down") {
             if (this.p.invisible) {
-              this.play("invisible_stand_front"); 
+              this.play("other_invisible_stand_front"); 
             }
             else {
-              this.play("stand_front"); 
+              this.play("other_stand_front"); 
             }
           }
         }
       }
     },
   });
-  
+
   //HUD
   Q.scene('hud',function(stage) {
   var container = stage.insert(new Q.UI.Container({x: 60, y: 0}));
@@ -1031,20 +1644,124 @@ window.addEventListener("load",function() {
   var health = container.insert(new Q.UI.Text({x:30, y: 20,
     label: "Health: " + stage.options.life, color: "green" }));
 
-  var specialBullets = container.insert(new Q.UI.Text({x:380, y: 20,
+  var specialBullets = container.insert(new Q.UI.Text({x:380 -170, y: 20,
     label: "Special Bullets: " + stage.options.specialBullets, color: "white" }));
 
-  var hasKey = container.insert(new Q.UI.Text({x:545, y: 20,
+  var hasKey = container.insert(new Q.UI.Text({x:545 -170, y: 20,
     label: "Keys: " + stage.options.keys, color: "white" }));
 
-  var controls = container.insert(new Q.UI.Text({x:1100, y: 20,
-    label: "Move: WASD, Shoot: SPACEBAR, Special: 'J'", color: "white" }));
+  var controls = container.insert(new Q.UI.Text({x:1050, y: 20,
+    label: "Move: WASD, Shoot: IJKL, Special: 'SPACE'", color: "white" }));
   container.fit(20);
 });
 
-  //Main game screen
-  Q.scene("mainMenu",function(stage) {
-    //Set up the main screen and buttons
+  //main menu
+  Q.scene('mainMenu',function(stage) {
+    var container = stage.insert(new Q.UI.Container({
+    x: Q.width/2, y: Q.height/2, fill: "rgba(255,255,255,0.5)"
+    }));
+
+    var tutorial = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
+                                                   label: "Tutorial Mode" })) 
+    var story = container.insert(new Q.UI.Button({ x: 0, y: 80, fill: "#CCCCCC",
+                                                   label: "Story Mode (Co Op)" }))     
+    var multiplayer = container.insert(new Q.UI.Button({ x: 0, y: 160, fill: "#CCCCCC",
+                                                   label: "Multiplayer Mode (Free for All)" })) 
+    var options = container.insert(new Q.UI.Button({ x: 0, y: 240, fill: "#CCCCCC",
+                                                   label: "Options" }))      
+    var label = container.insert(new Q.UI.Text({x:8, y: - 10 - tutorial.p.h, 
+                                 label: stage.options.label }));
+    
+    // When the buttons are clicked, clear all the stages
+    // and restart the level or go to main menu.
+    tutorial.on("click",function() {
+      Q.clearStages();
+      Q.stageScene("tutorial",1, { label: "Tutorial" });
+      Q.stageScene('hud', 3, Q('Player').first().p);
+    });
+    story.on("click",function() {
+      Q.clearStages();
+      Q.stageScene('level2');
+      Q.stageScene('hud', 3, Q('Player').first().p);
+    });
+    multiplayer.on("click",function() {
+      Q.clearStages();
+      Q.stageScene("multiplayer",1, { label: "Multiplayer" });
+    });
+    options.on("click",function() {
+      Q.clearStages();
+      Q.stageScene("options",1, { label: "Options" });
+    }); 
+
+    //Expand the container to visibily fit it's contents
+    container.fit(80);
+  });
+
+  //Scene that occurs after game ends
+  Q.scene('tutorial',function(stage) {
+  var container = stage.insert(new Q.UI.Container({
+    x: Q.width/2, y: Q.height/2, fill: "rgba(255,255,255,0.5)"
+    }));
+
+    var mainMenu = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
+                                                   label: "Main Menu" }))      
+    var label = container.insert(new Q.UI.Text({x:8, y: - 10 - mainMenu.p.h, 
+                                 label: stage.options.label }));
+    
+    // When the buttons are clicked, clear all the stages
+    // and restart the level or go to main menu.
+    mainMenu.on("click",function() {
+      Q.clearStages();
+      Q.stageScene("mainMenu",1, { label: "Main Menu" });
+    });
+    
+    //Expand the container to visibily fit it's contents
+    container.fit(20);
+  });
+
+  //Scene that occurs after game ends
+  Q.scene('options',function(stage) {
+  var container = stage.insert(new Q.UI.Container({
+    x: Q.width/2, y: Q.height/2, fill: "rgba(255,255,255,0.5)"
+    }));
+
+    var mainMenu = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
+                                                   label: "Main Menu" }))      
+    var label = container.insert(new Q.UI.Text({x:8, y: - 10 - mainMenu.p.h, 
+                                 label: stage.options.label }));
+    
+    // When the buttons are clicked, clear all the stages
+    // and restart the level or go to main menu.
+    mainMenu.on("click",function() {
+      Q.clearStages();
+      Q.stageScene("mainMenu",1, { label: "Main Menu" });
+    });
+    
+    //Expand the container to visibily fit it's contents
+    container.fit(20);
+  });
+
+  //Scene that occurs after game ends
+  Q.scene('multiplayer',function(stage) {
+  var container = stage.insert(new Q.UI.Container({
+    x: Q.width/2, y: Q.height/2, fill: "rgba(255,255,255,0.5)"
+    }));
+
+    var mainMenu = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
+                                                   label: "Main Menu" }))      
+    var label = container.insert(new Q.UI.Text({x:8, y: - 10 - mainMenu.p.h, 
+                                 label: stage.options.label }));
+    
+    // When the buttons are clicked, clear all the stages
+    // and restart the level or go to main menu.
+    mainMenu.on("click",function() {
+      Q.clearStages();
+      Q.stageScene("mainMenu",1, { label: "Main Menu" });
+    });
+    
+    //Expand the container to visibily fit it's contents
+    container.fit(20);
+    
   });
 
   //First level
@@ -1147,7 +1864,7 @@ window.addEventListener("load",function() {
     var restartButton = container.insert(new Q.UI.Button({ x: 0, y: 0, fill: "#CCCCCC",
                                                    label: "Restart Level" })) 
     var mainMenuButton = container.insert(new Q.UI.Button({ x: 0, y: 80, fill: "#CCCCCC",
-                                                   label: "Main Menu (Does Nothing)" }))        
+                                                   label: "Main Menu" }))        
     var label = container.insert(new Q.UI.Text({x:8, y: - 10 - restartButton.p.h, 
                                  label: stage.options.label }));
     
@@ -1160,7 +1877,7 @@ window.addEventListener("load",function() {
     });
     mainMenuButton.on("click",function() {
       Q.clearStages();
-      Q.stageScene('mainMenu');
+      Q.stageScene("mainMenu",1, { label: "Main Menu" });
     });
 
     //Expand the container to visibily fit it's contents
@@ -1171,8 +1888,7 @@ window.addEventListener("load",function() {
   Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png, redScreen.json, level2Collision.json, level2Background.json", function() {
     Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
     Q.compileSheets("sprites.png","sprites.json");
-    Q.stageScene("level2");
-    Q.stageScene('hud', 3, Q('Player').first().p);
+    Q.stageScene("mainMenu",1, { label: "Main Menu" }); 
   });
 
 });
