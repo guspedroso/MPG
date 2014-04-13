@@ -665,40 +665,91 @@ window.addEventListener("load",function() {
 
   //Set up the animations for the player, reading frames from sprites.png
   Q.animations("player", {
-    fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
-    fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
-    fire_front_running: {frames:[4,5], rate: 1/4},
-    fire_back_running: {frames:[16,17], rate: 1/4},
-    fire_standing_right: {frames:[9], rate: 1/4},
-    fire_standing_left: {frames:[21], rate: 1/4},
-    fire_standing_front: {frames:[3], rate: 1/4},
-    fire_standing_back: {frames:[15], rate: 1/4},
-    run_right: {frames:[7,6,8,6,7], rate: 1/15},
-    run_left: {frames:[18,19,20,19,18], rate: 1/15},
-    run_front: {frames:[0,1], rate: 1/5},
-    run_back: {frames:[12,13], rate: 1/5},
-    stand_right: {frames:[8], rate: 1/5},
-    stand_left: {frames:[20], rate: 1/5},
-    stand_front: {frames:[2], rate: 1/5},
-    stand_back: {frames:[14], rate: 1/5},
-    die:{frames:[24], rate: 1/5},
-    invisible_fire_right_running: {frames:[35,36,34,36,35], rate: 1/15},
-    invisible_fire_left_running: {frames:[48,47,46,47,48], rate: 1/15},
-    invisible_fire_front_running: {frames:[29,30], rate: 1/4},
-    invisible_fire_back_running: {frames:[41,42], rate: 1/4},
-    invisible_fire_standing_right: {frames:[34], rate: 1/4},
-    invisible_fire_standing_left: {frames:[46], rate: 1/4},
-    invisible_fire_standing_front: {frames:[28], rate: 1/4},
-    invisible_fire_standing_back: {frames:[40], rate: 1/4},
-    invisible_run_right: {frames:[32,31,33,31,32], rate: 1/15},
-    invisible_run_left: {frames:[43,44,45,44,43], rate: 1/15},
-    invisible_run_front: {frames:[25,26], rate: 1/5},
-    invisible_run_back: {frames:[37,38], rate: 1/5},
-    invisible_stand_right: {frames:[33], rate: 1/5},
-    invisible_stand_left: {frames:[45], rate: 1/5},
-    invisible_stand_front: {frames:[27], rate: 1/5},
-    invisible_stand_back: {frames:[39], rate: 1/5},
-    invisible_die:{frames:[49], rate: 1/5},
+    red_fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
+    red_fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
+    red_fire_front_running: {frames:[4,5], rate: 1/4},
+    red_fire_back_running: {frames:[16,17], rate: 1/4},
+    red_fire_standing_right: {frames:[9], rate: 1/4},
+    red_fire_standing_left: {frames:[21], rate: 1/4},
+    red_fire_standing_front: {frames:[3], rate: 1/4},
+    red_fire_standing_back: {frames:[15], rate: 1/4},
+    red_run_right: {frames:[7,6,8,6,7], rate: 1/15},
+    red_run_left: {frames:[18,19,20,19,18], rate: 1/15},
+    red_run_front: {frames:[0,1], rate: 1/5},
+    red_run_back: {frames:[12,13], rate: 1/5},
+    red_stand_right: {frames:[8], rate: 1/5},
+    red_stand_left: {frames:[20], rate: 1/5},
+    red_stand_front: {frames:[2], rate: 1/5},
+    red_stand_back: {frames:[14], rate: 1/5},
+    red_die:{frames:[24], rate: 1/5},
+    green_fire_right_running: {frames:[35,36,34,36,35], rate: 1/15},
+    green_fire_left_running: {frames:[48,47,46,47,48], rate: 1/15},
+    green_fire_front_running: {frames:[29,30], rate: 1/4},
+    green_fire_back_running: {frames:[41,42], rate: 1/4},
+    green_fire_standing_right: {frames:[34], rate: 1/4},
+    green_fire_standing_left: {frames:[46], rate: 1/4},
+    green_fire_standing_front: {frames:[28], rate: 1/4},
+    green_fire_standing_back: {frames:[40], rate: 1/4},
+    green_run_right: {frames:[32,31,33,31,32], rate: 1/15},
+    green_run_left: {frames:[43,44,45,44,43], rate: 1/15},
+    green_run_front: {frames:[25,26], rate: 1/5},
+    green_run_back: {frames:[37,38], rate: 1/5},
+    green_stand_right: {frames:[33], rate: 1/5},
+    green_stand_left: {frames:[45], rate: 1/5},
+    green_stand_front: {frames:[27], rate: 1/5},
+    green_stand_back: {frames:[39], rate: 1/5},
+    green_die:{frames:[49], rate: 1/5},
+    grey_fire_right_running: {frames:[35+25,36+25,34+25,36+25,35+25], rate: 1/15},
+    grey_fire_left_running: {frames:[48+25,47+25,46+25,47+25,48+25], rate: 1/15},
+    grey_fire_front_running: {frames:[29+25,30+25], rate: 1/4},
+    grey_fire_back_running: {frames:[41+25,42+25], rate: 1/4},
+    grey_fire_standing_right: {frames:[34+25], rate: 1/4},
+    grey_fire_standing_left: {frames:[46+25], rate: 1/4},
+    grey_fire_standing_front: {frames:[28+25], rate: 1/4},
+    grey_fire_standing_back: {frames:[40+25], rate: 1/4},
+    grey_run_right: {frames:[32+25,31+25,33+25,31+25,32+25], rate: 1/15},
+    grey_run_left: {frames:[43+25,44+25,45+25,44+25,43+25], rate: 1/15},
+    grey_run_front: {frames:[25+25,26+25], rate: 1/5},
+    grey_run_back: {frames:[37+25,38+25], rate: 1/5},
+    grey_stand_right: {frames:[33+25], rate: 1/5},
+    grey_stand_left: {frames:[45+25], rate: 1/5},
+    grey_stand_front: {frames:[27+25], rate: 1/5},
+    grey_stand_back: {frames:[39+25], rate: 1/5},
+    grey_die:{frames:[49+25], rate: 1/5},
+    invisible_fire_right_running: {frames:[35+50,36+50,34+50,36+50,35+50], rate: 1/15},
+    invisible_fire_left_running: {frames:[48+50,47+50,46+50,47+50,48+50], rate: 1/15},
+    invisible_fire_front_running: {frames:[29+50,30+50], rate: 1/4},
+    invisible_fire_back_running: {frames:[41+50,42+50], rate: 1/4},
+    invisible_fire_standing_right: {frames:[34+50], rate: 1/4},
+    invisible_fire_standing_left: {frames:[46+50], rate: 1/4},
+    invisible_fire_standing_front: {frames:[28+50], rate: 1/4},
+    invisible_fire_standing_back: {frames:[40+50], rate: 1/4},
+    invisible_run_right: {frames:[32+50,31+50,33+50,31+50,32+50], rate: 1/15},
+    invisible_run_left: {frames:[43+50,44+50,45+50,44+50,43+50], rate: 1/15},
+    invisible_run_front: {frames:[25+50,26+50], rate: 1/5},
+    invisible_run_back: {frames:[37+50,38+50], rate: 1/5},
+    invisible_stand_right: {frames:[33+50], rate: 1/5},
+    invisible_stand_left: {frames:[45+50], rate: 1/5},
+    invisible_stand_front: {frames:[27+50], rate: 1/5},
+    invisible_stand_back: {frames:[39+50], rate: 1/5},
+    invisible_die:{frames:[49+50], rate: 1/5},
+    blue_fire_right_running: {frames:[35+75,36+75,34+75,36+75,35+75], rate: 1/15},
+    blue_fire_left_running: {frames:[48+75,47+75,46+75,47+75,48+75], rate: 1/15},
+    blue_fire_front_running: {frames:[29+75,30+75], rate: 1/4},
+    blue_fire_back_running: {frames:[41+75,42+75], rate: 1/4},
+    blue_fire_standing_right: {frames:[34+75], rate: 1/4},
+    blue_fire_standing_left: {frames:[46+75], rate: 1/4},
+    blue_fire_standing_front: {frames:[28+75], rate: 1/4},
+    blue_fire_standing_back: {frames:[40+75], rate: 1/4},
+    blue_run_right: {frames:[32+75,31+75,33+75,31+75,32+75], rate: 1/15},
+    blue_run_left: {frames:[43+75,44+75,45+75,44+75,43+75], rate: 1/15},
+    blue_run_front: {frames:[25+75,26+75], rate: 1/5},
+    blue_run_back: {frames:[37+75,38+75], rate: 1/5},
+    blue_stand_right: {frames:[33+75], rate: 1/5},
+    blue_stand_left: {frames:[45+75], rate: 1/5},
+    blue_stand_front: {frames:[27+75], rate: 1/5},
+    blue_stand_back: {frames:[39+75], rate: 1/5},
+    blue_die:{frames:[49+75], rate: 1/5},
   });
 
   //Create the player object
@@ -708,11 +759,13 @@ window.addEventListener("load",function() {
       this._super(p,{
         sheet:"player",
         sprite:"player",
+        frame: 24,
         type: Q.SPRITE_PLAYER,
         stepDelay: 0.1,
         life: 10,
         bulletSpeed: 1000,
         special: false,
+        playerColor: "red",
         leftbulletInserted: false,
         rightbulletInserted: false,
         upbulletInserted: false,
@@ -728,7 +781,7 @@ window.addEventListener("load",function() {
         invisible: false,
         enemiesKilled: 0,
         specialBullets: 0,
-        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY | Q.SPRITE_OTHER_PLAYER
+        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY
       });
 
       this.add("2d, stepControls, animation");
@@ -979,7 +1032,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_right_running");
           }
           else {
-            this.play("fire_right_running");
+            this.play(this.p.playerColor + "_fire_right_running");
           }
           
         }
@@ -988,7 +1041,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_left_running")
           }
           else {
-            this.play("fire_left_running")
+            this.play(this.p.playerColor + "_fire_left_running")
           }
         }
         else if (this.p.rightbulletInserted) {
@@ -996,7 +1049,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_right_running")
           }
           else {
-            this.play("fire_right_running")
+            this.play(this.p.playerColor + "_fire_right_running")
           }
         }
         else if (this.p.upbulletInserted) {
@@ -1004,7 +1057,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_back_running")
           }
           else {
-            this.play("fire_back_running")
+            this.play(this.p.playerColor + "_fire_back_running")
           }
         }
         else if (this.p.downbulletInserted) {
@@ -1012,7 +1065,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_front_running")
           }
           else {
-            this.play("fire_front_running")
+            this.play(this.p.playerColor + "_fire_front_running")
           }
         }
         else {
@@ -1020,7 +1073,7 @@ window.addEventListener("load",function() {
             this.play("invisible_run_right");
           }
           else {
-            this.play("run_right");
+            this.play(this.p.playerColor + "_run_right");
           }
           
         }
@@ -1031,7 +1084,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_left_running")
           }
           else {
-            this.play("fire_left_running")
+            this.play(this.p.playerColor + "_fire_left_running")
           }
         }
         else if (this.p.leftbulletInserted) {
@@ -1039,7 +1092,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_left_running")
           }
           else {
-            this.play("fire_left_running")
+            this.play(this.p.playerColor + "_fire_left_running")
           }
         }
         else if (this.p.rightbulletInserted) {
@@ -1047,7 +1100,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_right_running")
           }
           else {
-            this.play("fire_right_running")
+            this.play(this.p.playerColor + "_fire_right_running")
           }
         }
         else if (this.p.upbulletInserted) {
@@ -1055,7 +1108,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_back_running")
           }
           else {
-            this.play("fire_back_running")
+            this.play(this.p.playerColor + "_fire_back_running")
           }
         }
         else if (this.p.downbulletInserted) {
@@ -1063,7 +1116,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_front_running")
           }
           else {
-            this.play("fire_front_running")
+            this.play(this.p.playerColor + "_fire_front_running")
           }
         }
         else {
@@ -1071,7 +1124,7 @@ window.addEventListener("load",function() {
             this.play("invisible_run_left");
           }
           else {
-            this.play("run_left");
+            this.play(this.p.playerColor + "_run_left");
           }
           
         }
@@ -1083,7 +1136,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_back_running")
           }
           else {
-            this.play("fire_back_running")
+            this.play(this.p.playerColor + "_fire_back_running")
           }
         }
         else if (this.p.leftbulletInserted) {
@@ -1091,7 +1144,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_left_running")
           }
           else {
-            this.play("fire_left_running")
+            this.play(this.p.playerColor + "_fire_left_running")
           }
         }
         else if (this.p.rightbulletInserted) {
@@ -1099,7 +1152,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_right_running")
           }
           else {
-            this.play("fire_right_running")
+            this.play(this.p.playerColor + "_fire_right_running")
           }
         }
         else if (this.p.upbulletInserted) {
@@ -1107,7 +1160,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_back_running")
           }
           else {
-            this.play("fire_back_running")
+            this.play(this.p.playerColor + "_fire_back_running")
           }
         }
         else if (this.p.downbulletInserted) {
@@ -1115,7 +1168,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_front_running")
           }
           else {
-            this.play("fire_front_running")
+            this.play(this.p.playerColor + "_fire_front_running")
           }
         }
         else {
@@ -1123,7 +1176,7 @@ window.addEventListener("load",function() {
             this.play("invisible_run_back");
           }
           else {
-            this.play("run_back");
+            this.play(this.p.playerColor + "_run_back");
           }
           
         }
@@ -1134,7 +1187,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_front_running")
           }
           else {
-            this.play("fire_front_running")
+            this.play(this.p.playerColor + "_fire_front_running")
           }
         }
         else if (this.p.leftbulletInserted) {
@@ -1142,7 +1195,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_left_running")
           }
           else {
-            this.play("fire_left_running")
+            this.play(this.p.playerColor + "_fire_left_running")
           }
         }
         else if (this.p.rightbulletInserted) {
@@ -1150,7 +1203,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_right_running")
           }
           else {
-            this.play("fire_right_running")
+            this.play(this.p.playerColor + "_fire_right_running")
           }
         }
         else if (this.p.upbulletInserted) {
@@ -1158,7 +1211,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_back_running")
           }
           else {
-            this.play("fire_back_running")
+            this.play(this.p.playerColor + "_fire_back_running")
           }
         }
         else if (this.p.downbulletInserted) {
@@ -1166,7 +1219,7 @@ window.addEventListener("load",function() {
             this.play("invisible_fire_front_running")
           }
           else {
-            this.play("fire_front_running")
+            this.play(this.p.playerColor + "_fire_front_running")
           }
         }
         else {
@@ -1174,7 +1227,7 @@ window.addEventListener("load",function() {
             this.play("invisible_run_front");
           }
           else {
-            this.play("run_front");
+            this.play(this.p.playerColor + "_run_front");
           }
         }
       }
@@ -1185,28 +1238,28 @@ window.addEventListener("load",function() {
               this.play("invisible_fire_standing_right"); 
             }
             else {
-              this.play("fire_standing_right"); 
+              this.play(this.p.playerColor + "_fire_standing_right"); 
             }
           } else if (this.p.direction == "left") {
             if (this.p.invisible) {
               this.play("invisible_fire_standing_left");
             }
             else {
-              this.play("fire_standing_left");
+              this.play(this.p.playerColor + "_fire_standing_left");
             }
           } else if (this.p.direction == "up") {
             if (this.p.invisible) {
               this.play("invisible_fire_standing_back");
             }
             else {
-              this.play("fire_standing_back");
+              this.play(this.p.playerColor + "_fire_standing_back");
             }
           } else if (this.p.direction == "down") {
             if (this.p.invisible) {
               this.play("invisible_fire_standing_front");
             }
             else {
-              this.play("fire_standing_front");
+              this.play(this.p.playerColor + "_fire_standing_front");
             }
           }
           
@@ -1217,419 +1270,28 @@ window.addEventListener("load",function() {
               this.play("invisible_stand_right"); 
             }
             else {
-              this.play("stand_right"); 
+              this.play(this.p.playerColor + "_stand_right"); 
             }
           } else if (this.p.direction == "left") {
             if (this.p.invisible) {
               this.play("invisible_stand_left"); 
             }
             else {
-              this.play("stand_left"); 
+              this.play(this.p.playerColor + "_stand_left"); 
             }
           } else if (this.p.direction == "up") {
             if (this.p.invisible) {
               this.play("invisible_stand_back"); 
             }
             else {
-              this.play("stand_back"); 
+              this.play(this.p.playerColor + "_stand_back"); 
             }
           } else if (this.p.direction == "down") {
             if (this.p.invisible) {
               this.play("invisible_stand_front"); 
             }
             else {
-              this.play("stand_front"); 
-            }
-          }
-        }
-      }
-    },
-  });
-/*
-  Q.el.addEventListener('mousemove',function(e) {
-    var x = e.offsetX || e.layerX,
-        y = e.offsetY || e.layerY,
-        stage = Q.stage();
-    var stageX = Q.canvasToStageX(x, stage),
-        stageY = Q.canvasToStageY(y, stage);
-
-    var obj = stage.locate(stageX,stageY);
-
-    if(currentObj) { currentObj.p.over = false; }
-    if(obj) {
-      currentObj = obj;
-      obj.p.over = true;
-
-
-      }
-  });
-*/
-  //Set up the animations for the other player, reading frames from otherPlayer in sprites.png
-  Q.animations("otherPlayer", {
-    other_fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
-    other_fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
-    other_fire_front_running: {frames:[4,5], rate: 1/4},
-    other_fire_back_running: {frames:[16,17], rate: 1/4},
-    other_fire_standing_right: {frames:[9], rate: 1/4},
-    other_fire_standing_left: {frames:[21], rate: 1/4},
-    other_fire_standing_front: {frames:[3], rate: 1/4},
-    other_fire_standing_back: {frames:[15], rate: 1/4},
-    other_run_right: {frames:[7,6,8,6,7], rate: 1/15},
-    other_run_left: {frames:[18,19,20,19,18], rate: 1/15},
-    other_run_front: {frames:[0,1], rate: 1/5},
-    other_run_back: {frames:[12,13], rate: 1/5},
-    other_stand_right: {frames:[8], rate: 1/5},
-    other_stand_left: {frames:[20], rate: 1/5},
-    other_stand_front: {frames:[2], rate: 1/5},
-    other_stand_back: {frames:[14], rate: 1/5},
-    other_die:{frames:[24], rate: 1/5},
-    other_invisible_fire_right_running: {frames:[35,36,34,36,35], rate: 1/15},
-    other_invisible_fire_left_running: {frames:[48,47,46,47,48], rate: 1/15},
-    other_invisible_fire_front_running: {frames:[29,30], rate: 1/4},
-    other_invisible_fire_back_running: {frames:[41,42], rate: 1/4},
-    other_invisible_fire_standing_right: {frames:[34], rate: 1/4},
-    other_invisible_fire_standing_left: {frames:[46], rate: 1/4},
-    other_invisible_fire_standing_front: {frames:[28], rate: 1/4},
-    other_invisible_fire_standing_back: {frames:[40], rate: 1/4},
-    other_invisible_run_right: {frames:[32,31,33,31,32], rate: 1/15},
-    other_invisible_run_left: {frames:[43,44,45,44,43], rate: 1/15},
-    other_invisible_run_front: {frames:[25,26], rate: 1/5},
-    other_invisible_run_back: {frames:[37,38], rate: 1/5},
-    other_invisible_stand_right: {frames:[33], rate: 1/5},
-    other_invisible_stand_left: {frames:[45], rate: 1/5},
-    other_invisible_stand_front: {frames:[27], rate: 1/5},
-    other_invisible_stand_back: {frames:[39], rate: 1/5},
-    other_invisible_die:{frames:[49], rate: 1/5},
-  });
-
-  //Create the other player object
-  Q.Sprite.extend("OtherPlayer", {
-    init: function(p) {
-
-      this._super(p,{
-        sheet:"otherPlayer",
-        sprite:"otherPlayer",
-        type: Q.SPRITE_OTHER_PLAYER,
-        stepDelay: 0.1,
-        life: 10,
-        bulletSpeed: 1000,
-        special: false,
-        bulletInserted: false,
-        specialBulletInserted: false,
-        specialCanFire: false,
-        specialInvisibilityCount: 0,
-        specialInvincibilityCount: 0,
-        specialSpeedCount: 0,
-        keys: 0,
-        canFire: true,
-        beenHit: false,
-        invisible: false,
-        enemiesKilled: 0,
-        specialBullets: 0,
-        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY | Q.SPRITE_PLAYER
-      });
-
-      this.add("2d, animation");
-      //Q.input.on("fire",this,"fire");
-      //Q.input.on("specialGun",this,"specialGun");
-      this.on("hit.sprite",this,"hit");
-    },
-    
-    hit: function(col) {
-      var red;
-      var p = this.p;
-      if (col.obj.isA("Life")) {
-        p.life++;
-      }
-      else if (col.obj.isA("Key")) {
-        p.keys++;
-      }
-      else if(col.obj.isA("SpecialSpeed")) {
-        p.specialSpeedCount++;
-        p.stepDelay = 0.05;
-        p.bulletSpeed = 1300;
-        setTimeout(function(){
-          p.specialSpeedCount--;
-          if (p.specialSpeedCount == 0) {
-            p.bulletSpeed = 1000;
-            p.stepDelay = 0.1;
-          }
-        }, 10000);
-      }
-      else if(col.obj.isA("SpecialInvisibility")) {
-        p.specialInvisibilityCount++;
-        p.invisible = true;
-        setTimeout(function(){
-          p.specialInvisibilityCount--;
-          if(p.specialInvisibilityCount == 0) {
-            p.invisible = false;
-          }
-        }, 10000);
-        
-      }
-      else if(col.obj.isA("SpecialGun")) {
-        p.specialCanFire = true;
-        p.specialBullets += 5;
-      }
-      else if(col.obj.isA("SpecialInvincibility")) {
-        p.specialInvincibilityCount++;
-        p.life = 100;
-        setTimeout(function(){
-          p.specialInvincibilityCount--;
-          if (p.specialInvincibilityCount == 0) {
-            p.life = 10;
-          }
-        }, 10000);
-      }
-      else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet")) && !p.beenHit) {
-        p.beenHit = true;
-        p.life--;
-        red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: Q.SPRITE_RED }));
-        setTimeout(function(){red.destroy()},200);
-        setTimeout(function(){p.beenHit = false}, 200);
-      }
-
-      if (p.life == 0) {
-        this.destroy();
-      }
-    },
-
-    specialGun: function() {
-      var p = this.p;
-      var angle, x, y;
-      if (!p.specialCanFire)
-        return;
-      p.specialCanFire = false;
-      //check to see if he has the special and if he still has bullets
-      if (p.specialBullets) {          
-        //See what direction the player is in and set the bullet to go that way
-        if (p.direction == "left") {
-          angle = -90;
-          x = this.p.x - 47;
-          y = this.p.y + 2;
-        } else if (p.direction == "right") {
-          angle = 90;
-          x = this.p.x + 47;
-          y = this.p.y + 2;
-        } else if (p.direction == "up") {
-          angle = 0;
-          x = this.p.x - 8;
-          y = this.p.y - 60;
-        } else if (p.direction == "down") {
-          angle = 180;
-          x = this.p.x + 10;
-          y = this.p.y + 60;
-        }
-        var dx =  Math.sin(angle * Math.PI / 180),
-            dy = -Math.cos(angle * Math.PI / 180);
-        p.specialBulletInserted = true;
-        //Insert the bullet into the stage
-        this.stage.insert(
-          new Q.SpecialBullet({ x: x, 
-                         y: y,
-                         vx: dx * p.bulletSpeed,
-                         vy: dy * p.bulletSpeed
-                  })
-        );
-        setTimeout(function() { p.specialBulletInserted = false}, 80);
-        setTimeout(function() { p.specialCanFire = true}, 200);
-        //decrement amount of available bullets
-        p.specialBullets--;
-      }
-    },
-
-    SpecialInvincibility: function() {
-      var p = this.p;
-      if (!p.specialCanJesus)
-        return;
-      p.specialCanJesus = false;
-    },
-
-    fire: function() {
-      var p = this.p;
-      var angle, x, y;
-      if (!p.canFire)
-        return;
-      p.canFire = false;
-      //See what direction the player is in and set the bullet to go that way
-      if (p.direction == "left") {
-        angle = -90;
-        x = this.p.x - 47;
-        y = this.p.y + 2;
-      } else if (p.direction == "right") {
-        angle = 90;
-        x = this.p.x + 47;
-        y = this.p.y + 2;
-      } else if (p.direction == "up") {
-        angle = 0;
-        x = this.p.x - 8;
-        y = this.p.y - 60;
-      } else if (p.direction == "down") {
-        angle = 180;
-        x = this.p.x + 10;
-        y = this.p.y + 60;
-      }
-      var dx =  Math.sin(angle * Math.PI / 180),
-          dy = -Math.cos(angle * Math.PI / 180);
-      p.bulletInserted = true;
-      //Insert the bullet into the stage
-      this.stage.insert(
-        new Q.PlayerBullet({ x: x, 
-                       y: y,
-                       vx: dx * p.bulletSpeed,
-                       vy: dy * p.bulletSpeed
-                })
-      );
-      setTimeout(function() { p.bulletInserted = false}, 80);
-      setTimeout(function() { p.canFire = true}, 200);
-    },
-    
-    //step function for controlling how this sprite will move
-    step: function(dt) {
-      //Grab the input and determine which animation to play
-      if(Q.inputs["right"]) {
-        //set the direction of the player depending on the input
-        this.p.direction = "right";
-
-        //play the fire animation if input reads that the player is firing,
-        //else just play the running animation
-        if ((Q.inputs["fire"] && this.p.bulletInserted) || this.p.specialBulletInserted) {
-          if (this.p.invisible) {
-            this.play("other_invisible_fire_right_running");
-          }
-          else {
-            this.play("other_fire_right_running");
-          }
-          
-        }
-        else {
-          if (this.p.invisible) {
-            this.play("other_invisible_run_right");
-          }
-          else {
-            this.play("other_run_right");
-          }
-          
-        }
-      } else if(Q.inputs["left"]) {
-        this.p.direction = "left";
-        if ((Q.inputs["fire"] && this.p.bulletInserted) || this.p.specialBulletInserted) {
-          if (this.p.invisible) {
-            this.play("other_invisible_fire_left_running")
-          }
-          else {
-            this.play("other_fire_left_running")
-          }
-        }
-        else {
-          if (this.p.invisible) {
-            this.play("other_invisible_run_left");
-          }
-          else {
-            this.play("run_left");
-          }
-          
-        }
-      }
-      else if(Q.inputs["up"]) {
-        this.p.direction = "up";
-        if ((Q.inputs['fire'] && this.p.bulletInserted) || this.p.specialBulletInserted) {
-          if (this.p.invisible) {
-            this.play("other_invisible_fire_back_running")
-          }
-          else {
-            this.play("other_fire_back_running")
-          }
-        }
-        else {
-          if (this.p.invisible) {
-            this.play("other_invisible_run_back");
-          }
-          else {
-            this.play("other_run_back");
-          }
-          
-        }
-      } else if(Q.inputs["down"]) {
-        this.p.direction = "down";
-        if ((Q.inputs["fire"] && this.p.bulletInserted) || this.p.specialBulletInserted) {
-          if (this.p.invisible) {
-            this.play("other_invisible_fire_front_running")
-          }
-          else {
-            this.play("other_fire_front_running")
-          }
-        }
-        else {
-          if (this.p.invisible) {
-            this.play("other_invisible_run_front");
-          }
-          else {
-            this.play("other_run_front");
-          }
-        }
-      }
-      else {
-        if ((Q.inputs["fire"] && this.p.bulletInserted ) || this.p.specialBulletInserted) {
-          if (this.p.direction == "right" && (this.p.bulletInserted || this.p.specialBulletInserted)) {
-            if (this.p.invisible) {
-              this.play("other_invisible_fire_standing_right"); 
-            }
-            else {
-              this.play("other_fire_standing_right"); 
-            }
-          } else if (this.p.direction == "left" && (this.p.bulletInserted || this.p.specialBulletInserted)) {
-            if (this.p.invisible) {
-              this.play("other_invisible_fire_standing_left");
-            }
-            else {
-              this.play("other_fire_standing_left");
-            }
-          } else if (this.p.direction == "up" && (this.p.bulletInserted || this.p.specialBulletInserted)) {
-            if (this.p.invisible) {
-              this.play("other_invisible_fire_standing_back");
-            }
-            else {
-              this.play("other_fire_standing_back");
-            }
-          } else if (this.p.direction == "down" && (this.p.bulletInserted || this.p.specialBulletInserted)) {
-            if (this.p.invisible) {
-              this.play("other_invisible_fire_standing_front");
-            }
-            else {
-              this.play("other_fire_standing_front");
-            }
-          }
-          
-        }
-        else {
-          if (this.p.direction == "right") {
-            if (this.p.invisible) {
-              this.play("other_invisible_stand_right"); 
-            }
-            else {
-              this.play("other_stand_right"); 
-            }
-          } else if (this.p.direction == "left") {
-            if (this.p.invisible) {
-              this.play("other_invisible_stand_left"); 
-            }
-            else {
-              this.play("other_stand_left"); 
-            }
-          } else if (this.p.direction == "up") {
-            if (this.p.invisible) {
-              this.play("other_invisible_stand_back"); 
-            }
-            else {
-              this.play("other_stand_back"); 
-            }
-          } else if (this.p.direction == "down") {
-            if (this.p.invisible) {
-              this.play("other_invisible_stand_front"); 
-            }
-            else {
-              this.play("other_stand_front"); 
+              this.play(this.p.playerColor + "_stand_front"); 
             }
           }
         }
