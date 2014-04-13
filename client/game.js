@@ -1321,6 +1321,18 @@ function loadCoOp() {
     
     //step function for controlling how this sprite will move
     step: function(dt) {
+      if (this.p.playerColor == "red") {
+        this.p.frame = 2;
+      }
+      else if (this.p.playerColor == "blue") {
+        this.p.frame = 102;
+      }
+      else if (this.p.playerColor == "green") {
+        this.p.frame = 27;
+      }
+      else if (this.p.playerColor == "grey") {
+        this.p.frame = 52;
+      }
       //Grab the input and determine which animation to play
       if(Q.inputs["right"]) {
         //set the direction of the player depending on the input
@@ -1791,6 +1803,18 @@ function loadCoOp() {
     
     //step function for controlling how this sprite will move
     animate: function(po, pf) {
+      if (this.p.playerColor == "red") {
+        this.p.frame = 2;
+      }
+      else if (this.p.playerColor == "blue") {
+        this.p.frame = 102;
+      }
+      else if (this.p.playerColor == "green") {
+        this.p.frame = 27;
+      }
+      else if (this.p.playerColor == "grey") {
+        this.p.frame = 52;
+      }
       //Grab the input and determine which animation to play
       if(po == "right") {
         //set the direction of the player depending on the input
