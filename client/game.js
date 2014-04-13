@@ -1,10 +1,192 @@
+
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+
 window.addEventListener("load",function() {
+
 
   var Q = window.Q = Quintus({ development: true })
           .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI")
           Q.setup({ maximize:true }) 
           .controls(true)
           .touch(Q.SPRITE_ALL);
+
+///////////////////////////// SOCKET STUFF /////////////////////////////////////
+
+var socket;
+
+//Current player
+var currentPlayer;
+//All the other players
+var allPlayers;
+
+init();
+
+// This function initializes the socket connection, sets event handlers
+function init(){
+	socket = io.connect('http://' + document.location.host, { port: 80, 
+    transports: ["websocket"]});
+	// Sets default spawn coordinates
+	// var xValue = 1300,
+				// yValue = 1200;
+	// Create player object for client
+	// currentPlayer = new Player(xValue, yValue);
+	allPlayers = [];
+	setEventHandlers();
+};
+
+// This function sets the event handlers for all socket messages
+function setEventHandlers() {
+	socket.on('connect', socketConnect);
+	socket.on('disconnect', socketDisconnect);
+	socket.on('new player', addNewPlayer);
+	socket.on('move player', movePlayer);
+	socket.on('remove player', removePlayer);
+	socket.on('new enemy', newEnemy);
+  socket.on('fire bullet', drawFriendlyBullet);
+  socket.on('door open', doorOpen);
+};
+
+// This function is executed upon socket connect message
+function socketConnect() {
+  console.log("Connected to the socket server...");
+  
+  loadGame();
+};
+
+// This function is executed upon socket disconnect message
+// Will remove disconnected players (if any)
+function socketDisconnect(data) {
+  console.log("Disconnect from the socket server.");
+  var playerDel = findPlayer(data.pid);
+  console.log(playerDel.p.pid);
+  playerDel.destroy();
+};
+
+/* 
+ * addNewPlayer function which will add a new player upon a connect message
+ * It will put the player onto the array, and draw him on the stage. 
+ */
+function addNewPlayer(data) {
+  console.log("new player joined...");
+	//add new player to client
+//	var newPlayer = new Player(data.x, data.y);
+	//newPlayer.id = data.id;
+	//push player to player list on client
+  var newPlayer = new Q.OtherPlayer1({ x: data.x, y: data.y, pid: data.pid });
+  console.log("new player " + data.x + " " + data.y);
+  // Q(newPlayer).set("pid", data.pid);
+  Q.stage().insert(newPlayer);
+  // var newPlayer = new Q.OtherPlayer1({ x: data.x, y: data.y, id: data.id });
+	allPlayers.push(newPlayer);
+  
+};
+
+/*
+ * movePlayer function which will set the new coordinates of the other players
+ * every time a move message is received. 
+ */
+function movePlayer(data) {
+  // console.log(data.pid);
+  //console.log("moving player");
+	//find moving player
+	var playerMove = findPlayer(data.pid);
+	//change his coordinates
+	// playerMove.setX(data.x);
+	// playerMove.setY(data.y);
+ // var playerMove2 = Q.stage().locate(data.pxs, data.pys, Q.SPRITE_PLAYER);
+  
+  playerMove.set({x: data.px, y: data.py});
+  console.log(data.px + " " + data.py);
+  playerMove.animate(data.po, "false");
+  // Q("OtherPlayer1").set({x: data.px, y: data.py});
+//  Q("OtherPlayer1").invoke("step", data.po, "false");
+};
+
+/* 
+ * removePlayer function which removes a player from the screen upon a remove
+ * message. This can be either due to death or some other reason. 
+ */
+function removePlayer(data) {
+  var playerDel = findPlayer(data.pid);
+  playerDel.destroy();
+};
+
+function newEnemy(data) {
+	console.log(data);
+	console.log("Enemy Added");
+};
+
+function moveEnemy(data) {
+
+};
+
+function removeEnemy(data) {
+
+};
+
+/*
+ * drawFriendlyBullet function which will draw bullets from other players when 
+ * they fire their primary weapon. 
+ */ 
+function drawFriendlyBullet(data) {
+  var playerFire = findPlayer(data.pid);
+  playerFire.animate(data.po, "true");
+  playerFire.fire(data.po);
+};
+
+function drawEnemyBullet(data) {
+
+};
+
+function doorOpen(data) {
+  console.log("door open");
+  var doorDel = Q.stage().locate(data.doorX, data.doorY ,Q.SPRITE_DOOR);
+  doorDel.destroy();
+};
+
+/*
+ * findPlayer function which finds the player within the local client player 
+ * array by the assigned socket ID. 
+ */ 
+function findPlayer(id) {
+  for (var i = 0; i < allPlayers.length; i++) {
+    if (allPlayers[i].p.pid == id) {
+      return allPlayers[i];
+    };
+  };
+};
+
+///////////////////////////// SOCKET STUFF ABOVE ///////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////// SOME CRUCIAL FUNCTIONS ////////////////////////////
+
+function loadGame() {
+  Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png, redScreen.json, level2Collision.json, level2Background.json", function() {
+    Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
+    Q.compileSheets("sprites.png","sprites.json");
+    Q.stageScene("mainMenu",1, { label: "Main Menu" }); 
+  });
+};
+
+function loadCoOp() {
+  Q.clearStages();
+  Q.stageScene('level2');
+  Q.stageScene('hud', 3, Q('Player').first().p);
+  var px = currentPlayer.p.x;
+  var py = currentPlayer.p.y;
+  //sends new player request to server
+  console.log(px + " " + py);
+  socket.emit('new player', { x: px, y: py });
+};
+
+
+///////////////////////// SOME CRUCIAL FUNCTIONS ABOVE /////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////// CONTROLS AND INPUTS ///////////////////////////////
+
+
 
   //Add in the default keyboard controls
   //along with joypad controls for touch
@@ -22,10 +204,103 @@ window.addEventListener("load",function() {
   });
   Q.input.joypadControls();
 
+////////////////////////// CONTROLS AND INPUTS ABOVE ///////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////// OVERRIDEN QUINTUS FUNCTIONS ///////////////////////////
+
+  Q.component("stepControls", {
+
+    added: function() {
+      var p = this.entity.p;
+
+      if(!p.stepDistance) { p.stepDistance = 32; }
+      if(!p.stepDelay) { p.stepDelay = 0.2; }
+
+      p.stepWait = 0;
+      this.entity.on("step",this,"step");
+      this.entity.on("hit", this,"collision");
+    },
+
+    collision: function(col) {
+      var p = this.entity.p;
+
+      if(p.stepping) {
+        p.stepping = false;
+        p.x = p.origX;
+        p.y = p.origY;
+      }
+
+    },
+
+    step: function(dt) {
+      var p = this.entity.p,
+          moved = false;
+      p.stepWait -= dt;
+
+      if(p.stepping) {
+        p.x += p.diffX * dt / p.stepDelay;
+        p.y += p.diffY * dt / p.stepDelay;
+      }
+
+      if(p.stepWait > 0) { return; }
+      if(p.stepping) {
+        p.x = p.destX;
+        p.y = p.destY;
+      }
+      p.stepping = false;
+
+      p.diffX = 0;
+      p.diffY = 0;
+
+      if(Q.inputs['left']) {
+        p.diffX = -p.stepDistance;
+      } else if(Q.inputs['right']) {
+        p.diffX = p.stepDistance;
+      }
+
+      if(Q.inputs['up']) {
+        p.diffY = -p.stepDistance;
+      } else if(Q.inputs['down']) {
+        p.diffY = p.stepDistance;
+      }
+
+      if(p.diffY || p.diffX ) { 
+        p.stepping = true;
+        p.origX = p.x;
+        p.origY = p.y;
+        p.destX = p.x + p.diffX;
+        p.destY = p.y + p.diffY;
+        p.stepWait = p.stepDelay; 
+
+        // Check direction
+        var stepDir;
+        if (p.diffY > 0) {
+          stepDir = "down";
+        } else if (p.diffY < 0) {
+          stepDir = "up";
+        }
+
+        if (p.diffX > 0) {
+          stepDir = "right";
+        } else if (p.diffX < 0) {
+          stepDir = "left";
+        }
+
+        socket.emit('move player', { x: p.destX, y: p.destY, o: stepDir });
+      }
+    }
+  });
+
+
+////////////////////// OVERRIDDEN QUINTUS FUNCTIONS ABOVE //////////////////////
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// GAME STUFF ///////////////////////////////////
+
+///////////////////// SPRITE VALUES AND OTHER SETTINGS /////////////////////////
 
 	// Set the gravity to zero since this is a top down game
-	Q.gravityY = 0;
-	Q.gravityX = 0;
+  Q.gravityY = 0;
+  Q.gravityX = 0;
 
   //Set the types for the entities, for collision. Need to be powers of 2
   Q.SPRITE_NONE = 0;
@@ -57,8 +332,14 @@ window.addEventListener("load",function() {
   var moveX = 0; //If we need to move all the entities on the board consistently
   var moveY = 640;
   var totalKeys = 0; //Once the player has gotten all the keys, open the boss door
+  
+/////////////////// SPRITE VALUES AND OTHER SETTINGS ABOVE /////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////// ENTITIES AND ACTIONS //////////////////////////////
 
-  //Tree object 1 for the enviroment
+//////////////////////////// TREES AND ENVIRONMENT /////////////////////////////
+
+    //Tree object 1 for the enviroment
   Q.Sprite.extend("Tree1", {
     init: function(p) {
       this._super(p,{
@@ -113,6 +394,7 @@ window.addEventListener("load",function() {
         objP.keys--;
         Q.stageScene('hud', 3, objP);
         this.destroy();
+        socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
       }
       else
       {
@@ -141,6 +423,7 @@ window.addEventListener("load",function() {
         objP.keys--;
         Q.stageScene('hud', 3, objP);
         this.destroy();
+        socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
       }
       else
       {
@@ -150,6 +433,10 @@ window.addEventListener("load",function() {
     }
   });
 
+/////////////////////// TREES AND ENVIRONMENT ABOVE ////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/////////////////////////// AMMUNITION AND DROPS ///////////////////////////////
+  
   //Animations for the player bullet, reading frames from playerBullet in sprites.png
   Q.animations("playerBullet", {
     playerLight: {frames:[0,1,2,3,4,4,4,3,2,1,0], rate: 1/6, loop: true},
@@ -388,6 +675,12 @@ window.addEventListener("load",function() {
     }
   });
 
+///////////////////////// AMMUNITION AND DROPS ABOVE ///////////////////////////
+
+//////////////////////// ENTITIES AND ACTIONS ABOVE ////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////// ENEMY ////////////////////////////////////
+
   //Set up the animations for the enemy, reading frames from enemy in sprites.png
   Q.animations("enemy", {
     enemy_fire_right_running: {frames:[10,11,9,11,10], rate: 1/10},
@@ -543,7 +836,7 @@ window.addEventListener("load",function() {
         
         this.destroy();
       }
-      else if(col.obj.isA("Player") || col.obj.isA("OtherPlayer"))
+      else if(col.obj.isA("Player") || col.obj.isA("OtherPlayer1"))
       {
         this.p.x -= col.separate[0];
         this.p.y -= col.separate[1];
@@ -622,7 +915,7 @@ window.addEventListener("load",function() {
     // try moving in a direction 90 away from the normal
     changeDirection: function(col) {
       var p = this.p;
-      if(col.obj.isA("Player") || col.obj.isA("OtherPlayer"))
+      if(col.obj.isA("Player") || col.obj.isA("OtherPlayer1"))
       {
         return;
       }
@@ -639,7 +932,7 @@ window.addEventListener("load",function() {
     tryToFire: function() {
       var p = this.p;
       var player = Q("Player").first();
-      var otherPlayer = Q("OtherPlayer").first();
+      var otherPlayer = Q("OtherPlayer1").first();
      
       if(!player)
         return;
@@ -662,6 +955,9 @@ window.addEventListener("load",function() {
       
     },
   });
+
+////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////// PLAYER CLASSES /////////////////////////////////
 
   //Set up the animations for the player, reading frames from sprites.png
   Q.animations("player", {
@@ -781,7 +1077,11 @@ window.addEventListener("load",function() {
         invisible: false,
         enemiesKilled: 0,
         specialBullets: 0,
+<<<<<<< HEAD:test.js
         collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY
+=======
+        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY 
+>>>>>>> 41a357014b2e6588665c55f88d6965f46fa7a069:client/game.js
       });
 
       this.add("2d, stepControls, animation");
@@ -861,6 +1161,7 @@ window.addEventListener("load",function() {
 
       if (p.life == 0) {
         this.destroy();
+        socket.emit('death');
       }
     },
 
@@ -938,6 +1239,7 @@ window.addEventListener("load",function() {
                        vy: dy * p.bulletSpeed
                 })
       );
+      socket.emit('fire bullet', { px: p.x, py: p.y, po: "left" });
       setTimeout(function() { p.leftbulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 200);
     },
@@ -963,6 +1265,7 @@ window.addEventListener("load",function() {
                        vy: dy * p.bulletSpeed
                 })
       );
+      socket.emit('fire bullet', { px: p.x, py: p.y, po: "right" });
       setTimeout(function() { p.rightbulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 200);
     },
@@ -989,6 +1292,7 @@ window.addEventListener("load",function() {
                        vy: dy * p.bulletSpeed
                 })
       );
+      socket.emit('fire bullet', { px: p.x, py: p.y, po: "up" });
       setTimeout(function() { p.upbulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 200);
     },
@@ -1014,6 +1318,7 @@ window.addEventListener("load",function() {
                        vy: dy * p.bulletSpeed
                 })
       );
+      socket.emit('fire bullet', { px: p.x, py: p.y, po: "down" });
       setTimeout(function() { p.downbulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 200);
     },
@@ -1291,14 +1596,335 @@ window.addEventListener("load",function() {
               this.play("invisible_stand_front"); 
             }
             else {
+<<<<<<< HEAD:test.js
               this.play(this.p.playerColor + "_stand_front"); 
+            }
+=======
+              this.play("stand_front"); 
             }
           }
         }
       }
     },
   });
+/*
+  Q.el.addEventListener('mousemove',function(e) {
+    var x = e.offsetX || e.layerX,
+        y = e.offsetY || e.layerY,
+        stage = Q.stage();
+    var stageX = Q.canvasToStageX(x, stage),
+        stageY = Q.canvasToStageY(y, stage);
 
+    var obj = stage.locate(stageX,stageY);
+
+    if(currentObj) { currentObj.p.over = false; }
+    if(obj) {
+      currentObj = obj;
+      obj.p.over = true;
+
+
+      }
+  });
+*/
+  //Set up the animations for the other player, reading frames from otherPlayer in sprites.png
+  Q.animations("otherPlayer", {
+    other_fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
+    other_fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
+    other_fire_front_running: {frames:[4,5], rate: 1/4},
+    other_fire_back_running: {frames:[16,17], rate: 1/4},
+    other_fire_standing_right: {frames:[9], rate: 1/4},
+    other_fire_standing_left: {frames:[21], rate: 1/4},
+    other_fire_standing_front: {frames:[3], rate: 1/4},
+    other_fire_standing_back: {frames:[15], rate: 1/4},
+    other_run_right: {frames:[7,6,8,6,7], rate: 1/15},
+    other_run_left: {frames:[18,19,20,19,18], rate: 1/15},
+    other_run_front: {frames:[0,1], rate: 1/5},
+    other_run_back: {frames:[12,13], rate: 1/5},
+    other_stand_right: {frames:[8], rate: 1/5},
+    other_stand_left: {frames:[20], rate: 1/5},
+    other_stand_front: {frames:[2], rate: 1/5},
+    other_stand_back: {frames:[14], rate: 1/5},
+    other_die:{frames:[24], rate: 1/5},
+    other_invisible_fire_right_running: {frames:[35,36,34,36,35], rate: 1/15},
+    other_invisible_fire_left_running: {frames:[48,47,46,47,48], rate: 1/15},
+    other_invisible_fire_front_running: {frames:[29,30], rate: 1/4},
+    other_invisible_fire_back_running: {frames:[41,42], rate: 1/4},
+    other_invisible_fire_standing_right: {frames:[34], rate: 1/4},
+    other_invisible_fire_standing_left: {frames:[46], rate: 1/4},
+    other_invisible_fire_standing_front: {frames:[28], rate: 1/4},
+    other_invisible_fire_standing_back: {frames:[40], rate: 1/4},
+    other_invisible_run_right: {frames:[32,31,33,31,32], rate: 1/15},
+    other_invisible_run_left: {frames:[43,44,45,44,43], rate: 1/15},
+    other_invisible_run_front: {frames:[25,26], rate: 1/5},
+    other_invisible_run_back: {frames:[37,38], rate: 1/5},
+    other_invisible_stand_right: {frames:[33], rate: 1/5},
+    other_invisible_stand_left: {frames:[45], rate: 1/5},
+    other_invisible_stand_front: {frames:[27], rate: 1/5},
+    other_invisible_stand_back: {frames:[39], rate: 1/5},
+    other_invisible_die:{frames:[49], rate: 1/5},
+  });
+
+  //Create the other player object
+  Q.Sprite.extend("OtherPlayer1", {
+    init: function(p) {
+
+      this._super(p,{
+        sheet:"otherPlayer",
+        sprite:"otherPlayer", //other player animation is broken! only works with player
+        type: Q.SPRITE_OTHER_PLAYER,
+        stepDelay: 0.1,
+        life: 10,
+        bulletSpeed: 1000,
+        special: false,
+        bulletInserted: false,
+        specialBulletInserted: false,
+        specialCanFire: false,
+        specialInvisibilityCount: 0,
+        specialInvincibilityCount: 0,
+        specialSpeedCount: 0,
+        keys: 0,
+        canFire: true,
+        beenHit: false,
+        invisible: false,
+        enemiesKilled: 0,
+        specialBullets: 0,
+        pid: "",
+        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY 
+      });
+
+      this.add("2d, animation");
+      this.on("step", this, "animate");
+      //Q.input.on("fire",this,"fire");
+      //Q.input.on("specialGun",this,"specialGun");
+      // this.on("hit.sprite",this,"hit");
+    },
+
+    /*
+    hit: function(col) {
+      var red;
+      var p = this.p;
+      if (col.obj.isA("Life")) {
+        p.life++;
+      }
+      else if (col.obj.isA("Key")) {
+        p.keys++;
+      }
+      else if(col.obj.isA("SpecialSpeed")) {
+        p.specialSpeedCount++;
+        p.stepDelay = 0.05;
+        p.bulletSpeed = 1300;
+        setTimeout(function(){
+          p.specialSpeedCount--;
+          if (p.specialSpeedCount == 0) {
+            p.bulletSpeed = 1000;
+            p.stepDelay = 0.1;
+          }
+        }, 10000);
+      }
+      else if(col.obj.isA("SpecialInvisibility")) {
+        p.specialInvisibilityCount++;
+        p.invisible = true;
+        setTimeout(function(){
+          p.specialInvisibilityCount--;
+          if(p.specialInvisibilityCount == 0) {
+            p.invisible = false;
+          }
+        }, 10000);
+        
+      }
+      else if(col.obj.isA("SpecialGun")) {
+        p.specialCanFire = true;
+        p.specialBullets += 5;
+      }
+      else if(col.obj.isA("SpecialInvincibility")) {
+        p.specialInvincibilityCount++;
+        p.life = 100;
+        setTimeout(function(){
+          p.specialInvincibilityCount--;
+          if (p.specialInvincibilityCount == 0) {
+            p.life = 10;
+          }
+        }, 10000);
+      }
+      else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet")) && !p.beenHit) {
+        p.beenHit = true;
+        p.life--;
+        red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: Q.SPRITE_RED }));
+        setTimeout(function(){red.destroy()},200);
+        setTimeout(function(){p.beenHit = false}, 200);
+      }
+
+      if (p.life == 0) {
+        this.destroy();
+      }
+    },
+*/
+    specialGun: function() {
+      var p = this.p;
+      var angle, x, y;
+      if (!p.specialCanFire)
+        return;
+      p.specialCanFire = false;
+      //check to see if he has the special and if he still has bullets
+      if (p.specialBullets) {          
+        //See what direction the player is in and set the bullet to go that way
+        if (p.direction == "left") {
+          angle = -90;
+          x = this.p.x - 47;
+          y = this.p.y + 2;
+        } else if (p.direction == "right") {
+          angle = 90;
+          x = this.p.x + 47;
+          y = this.p.y + 2;
+        } else if (p.direction == "up") {
+          angle = 0;
+          x = this.p.x - 8;
+          y = this.p.y - 60;
+        } else if (p.direction == "down") {
+          angle = 180;
+          x = this.p.x + 10;
+          y = this.p.y + 60;
+        }
+        var dx =  Math.sin(angle * Math.PI / 180),
+            dy = -Math.cos(angle * Math.PI / 180);
+        p.specialBulletInserted = true;
+        //Insert the bullet into the stage
+        this.stage.insert(
+          new Q.SpecialBullet({ x: x, 
+                         y: y,
+                         vx: dx * p.bulletSpeed,
+                         vy: dy * p.bulletSpeed
+                  })
+        );
+        setTimeout(function() { p.specialBulletInserted = false}, 80);
+        setTimeout(function() { p.specialCanFire = true}, 200);
+        //decrement amount of available bullets
+        p.specialBullets--;
+      }
+    },
+
+    SpecialInvincibility: function() {
+      var p = this.p;
+      if (!p.specialCanJesus)
+        return;
+      p.specialCanJesus = false;
+    },
+
+    fire: function(po) {
+      // console.log("I fired");
+      var p = this.p;
+      var angle, x, y;
+ /*     if (!p.canFire)
+        return;
+      p.canFire = false;*/
+      //See what direction the player is in and set the bullet to go that way
+      if (po == "left") {
+        angle = -90;
+        x = this.p.x - 47;
+        y = this.p.y + 2;
+      } else if (po == "right") {
+        angle = 90;
+        x = this.p.x + 47;
+        y = this.p.y + 2;
+      } else if (po == "up") {
+        angle = 0;
+        x = this.p.x - 8;
+        y = this.p.y - 60;
+      } else if (po == "down") {
+        angle = 180;
+        x = this.p.x + 10;
+        y = this.p.y + 60;
+      }
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+     // p.bulletInserted = true;
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.PlayerBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );      
+      // console.log("bullet " + x + " " + y);
+     // setTimeout(function() { p.bulletInserted = false}, 80);
+     // setTimeout(function() { p.canFire = true}, 200);
+    },
+    
+    //step function for controlling how this sprite will move
+    animate: function(po, pf) {
+      //Grab the input and determine which animation to play
+      if(po == "right") {
+        //set the direction of the player depending on the input
+        this.p.direction = "right";
+
+        //play the fire animation if input reads that the player is firing,
+        //else just play the running animation
+        if (pf == "true") {
+          this.play("other_fire_right_running");
+        }
+         else {
+            this.play("other_run_right");
+        }
+      } else if (po == "left") {
+        this.p.direction = "left";
+        if (pf == "true") {
+          this.play("other_fire_left_running")
+        }
+        else {
+          this.play("other_run_left");
+        }
+      }
+      else if (po == "up") {
+        this.p.direction = "up";
+        if (pf == "true") {
+          this.play("other_fire_back_running")
+        }
+        else {
+          this.play("other_run_back");
+        }
+      } else if (po == "down") {
+        this.p.direction = "down";
+        if (pf == "true") {
+          this.play("other_fire_front_running")
+        }
+        else {
+          this.play("other_run_front");
+        }
+      }
+      else {
+        if (pf == "true") {
+          if (this.p.direction == "right") {
+            this.play("other_fire_standing_right"); 
+          } else if (this.p.direction == "left") {
+            this.play("other_fire_standing_left");
+          } else if (this.p.direction == "up") {
+            this.play("other_fire_standing_back");
+          } else if (this.p.direction == "down") {
+            this.play("other_fire_standing_front");
+          }
+          
+        }
+        else {
+          if (this.p.direction == "right") {
+            setTimeout(this.play("other_stand_right"),1000);
+          } else if (this.p.direction == "left") {
+            setTimeout(this.play("other_stand_left"),1000);
+          } else if (this.p.direction == "up") {
+            setTimeout(this.play("other_stand_back"),1000);
+          } else if (this.p.direction == "down") {
+            setTimeout(this.play("other_stand_front"),1000);
+>>>>>>> 41a357014b2e6588665c55f88d6965f46fa7a069:client/game.js
+          }
+        }
+      }
+    },
+  });
+
+//////////////////////////// PLAYER CLASSES ABOVE //////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// HUD AND OSD //////////////////////////////////
+  
   //HUD
   Q.scene('hud',function(stage) {
   var container = stage.insert(new Q.UI.Container({x: 60, y: 0}));
@@ -1316,6 +1942,15 @@ window.addEventListener("load",function() {
     label: "Move: WASD, Shoot: IJKL, Special: 'SPACE'", color: "white" }));
   container.fit(20);
 });
+
+  //Main game screen
+  Q.scene("mainMenu",function(stage) {
+    //Set up the main screen and buttons
+  });
+
+//////////////////////////// HUD AND OSD ABOVE /////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////// LEVELS //////////////////////////////////////
 
   //main menu
   Q.scene('mainMenu',function(stage) {
@@ -1342,9 +1977,7 @@ window.addEventListener("load",function() {
       Q.stageScene('hud', 3, Q('Player').first().p);
     });
     story.on("click",function() {
-      Q.clearStages();
-      Q.stageScene('level2');
-      Q.stageScene('hud', 3, Q('Player').first().p);
+      loadCoOp();
     });
     multiplayer.on("click",function() {
       Q.clearStages();
@@ -1487,10 +2120,10 @@ window.addEventListener("load",function() {
     rightDoor = stage.insert(new Q.verticalDoor({ x: 1840, y: 1264 + moveY}));
     
     //insert the player
-    var player = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
+    currentPlayer = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
     
     //insert the enemies
-    stage.insert(new Q.Enemy({ x: 1800, y: 1500 + moveY})); // spawn room
+    // stage.insert(new Q.Enemy({ x: 1800, y: 1500 + moveY})); // spawn room
     stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
     stage.insert(new Q.Enemy({ x: 1350, y: 2000 + moveY})); //bottom 
     stage.insert(new Q.Enemy({ x: 2000, y: 1200 + moveY})); //right
@@ -1500,9 +2133,9 @@ window.addEventListener("load",function() {
     stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY})); //top
     stage.insert(new Q.Enemy({ x: 300, y: 300 + moveY})); //top
     stage.insert(new Q.Enemy({ x: 2000, y: 300 + moveY})); //top
-    
+   
     //Set viewport to follow player
-    stage.add("viewport").follow(player);
+    stage.add("viewport").follow(currentPlayer);
 
     //When the enemies have been defeated display label
     stage.on("step",function() {
@@ -1545,12 +2178,12 @@ window.addEventListener("load",function() {
     //Expand the container to visibily fit it's contents
     container.fit(20);
   });
-
+/*
   ///Load and start the level
   Q.load("sprites.png, sprites.json, level1Collision.json, level1Background.json, tiles.png, redScreen.json, level2Collision.json, level2Background.json", function() {
     Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
     Q.compileSheets("sprites.png","sprites.json");
     Q.stageScene("mainMenu",1, { label: "Main Menu" }); 
   });
-
+*/
 });
