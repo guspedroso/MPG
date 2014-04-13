@@ -959,7 +959,7 @@ function loadCoOp() {
 ////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// PLAYER CLASSES /////////////////////////////////
 
-  //Set up the animations for the player, reading frames from sprites.png
+ //Set up the animations for the player, reading frames from sprites.png
   Q.animations("player", {
     red_fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
     red_fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
@@ -1061,7 +1061,7 @@ function loadCoOp() {
         life: 10,
         bulletSpeed: 1000,
         special: false,
-        playerColor: "red",
+        playerColor: "blue",
         leftbulletInserted: false,
         rightbulletInserted: false,
         upbulletInserted: false,
@@ -1077,11 +1077,7 @@ function loadCoOp() {
         invisible: false,
         enemiesKilled: 0,
         specialBullets: 0,
-<<<<<<< HEAD:test.js
         collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY
-=======
-        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY 
->>>>>>> 41a357014b2e6588665c55f88d6965f46fa7a069:client/game.js
       });
 
       this.add("2d, stepControls, animation");
@@ -1596,72 +1592,12 @@ function loadCoOp() {
               this.play("invisible_stand_front"); 
             }
             else {
-<<<<<<< HEAD:test.js
               this.play(this.p.playerColor + "_stand_front"); 
-            }
-=======
-              this.play("stand_front"); 
             }
           }
         }
       }
     },
-  });
-/*
-  Q.el.addEventListener('mousemove',function(e) {
-    var x = e.offsetX || e.layerX,
-        y = e.offsetY || e.layerY,
-        stage = Q.stage();
-    var stageX = Q.canvasToStageX(x, stage),
-        stageY = Q.canvasToStageY(y, stage);
-
-    var obj = stage.locate(stageX,stageY);
-
-    if(currentObj) { currentObj.p.over = false; }
-    if(obj) {
-      currentObj = obj;
-      obj.p.over = true;
-
-
-      }
-  });
-*/
-  //Set up the animations for the other player, reading frames from otherPlayer in sprites.png
-  Q.animations("otherPlayer", {
-    other_fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
-    other_fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
-    other_fire_front_running: {frames:[4,5], rate: 1/4},
-    other_fire_back_running: {frames:[16,17], rate: 1/4},
-    other_fire_standing_right: {frames:[9], rate: 1/4},
-    other_fire_standing_left: {frames:[21], rate: 1/4},
-    other_fire_standing_front: {frames:[3], rate: 1/4},
-    other_fire_standing_back: {frames:[15], rate: 1/4},
-    other_run_right: {frames:[7,6,8,6,7], rate: 1/15},
-    other_run_left: {frames:[18,19,20,19,18], rate: 1/15},
-    other_run_front: {frames:[0,1], rate: 1/5},
-    other_run_back: {frames:[12,13], rate: 1/5},
-    other_stand_right: {frames:[8], rate: 1/5},
-    other_stand_left: {frames:[20], rate: 1/5},
-    other_stand_front: {frames:[2], rate: 1/5},
-    other_stand_back: {frames:[14], rate: 1/5},
-    other_die:{frames:[24], rate: 1/5},
-    other_invisible_fire_right_running: {frames:[35,36,34,36,35], rate: 1/15},
-    other_invisible_fire_left_running: {frames:[48,47,46,47,48], rate: 1/15},
-    other_invisible_fire_front_running: {frames:[29,30], rate: 1/4},
-    other_invisible_fire_back_running: {frames:[41,42], rate: 1/4},
-    other_invisible_fire_standing_right: {frames:[34], rate: 1/4},
-    other_invisible_fire_standing_left: {frames:[46], rate: 1/4},
-    other_invisible_fire_standing_front: {frames:[28], rate: 1/4},
-    other_invisible_fire_standing_back: {frames:[40], rate: 1/4},
-    other_invisible_run_right: {frames:[32,31,33,31,32], rate: 1/15},
-    other_invisible_run_left: {frames:[43,44,45,44,43], rate: 1/15},
-    other_invisible_run_front: {frames:[25,26], rate: 1/5},
-    other_invisible_run_back: {frames:[37,38], rate: 1/5},
-    other_invisible_stand_right: {frames:[33], rate: 1/5},
-    other_invisible_stand_left: {frames:[45], rate: 1/5},
-    other_invisible_stand_front: {frames:[27], rate: 1/5},
-    other_invisible_stand_back: {frames:[39], rate: 1/5},
-    other_invisible_die:{frames:[49], rate: 1/5},
   });
 
   //Create the other player object
@@ -1669,12 +1605,14 @@ function loadCoOp() {
     init: function(p) {
 
       this._super(p,{
-        sheet:"otherPlayer",
-        sprite:"otherPlayer", //other player animation is broken! only works with player
+        sheet:"player",
+        sprite:"player", 
+        frame: 24,
         type: Q.SPRITE_OTHER_PLAYER,
         stepDelay: 0.1,
         life: 10,
         bulletSpeed: 1000,
+        playerColor: "red",
         special: false,
         bulletInserted: false,
         specialBulletInserted: false,
@@ -1861,60 +1799,60 @@ function loadCoOp() {
         //play the fire animation if input reads that the player is firing,
         //else just play the running animation
         if (pf == "true") {
-          this.play("other_fire_right_running");
+          this.play(this.p.playerColor + "_fire_right_running");
         }
          else {
-            this.play("other_run_right");
+            this.play(this.p.playerColor + "_run_right");
         }
       } else if (po == "left") {
         this.p.direction = "left";
         if (pf == "true") {
-          this.play("other_fire_left_running")
+          this.play(this.p.playerColor + "_fire_left_running")
         }
         else {
-          this.play("other_run_left");
+          this.play(this.p.playerColor + "_run_left");
         }
       }
       else if (po == "up") {
         this.p.direction = "up";
         if (pf == "true") {
-          this.play("other_fire_back_running")
+          this.play(this.p.playerColor + "_fire_back_running")
         }
         else {
-          this.play("other_run_back");
+          this.play(this.p.playerColor + "_run_back");
         }
       } else if (po == "down") {
         this.p.direction = "down";
         if (pf == "true") {
-          this.play("other_fire_front_running")
+          this.play(this.p.playerColor + "_fire_front_running")
         }
         else {
-          this.play("other_run_front");
+          this.play(this.p.playerColor + "_run_front");
         }
       }
       else {
         if (pf == "true") {
           if (this.p.direction == "right") {
-            this.play("other_fire_standing_right"); 
+            this.play(this.p.playerColor + "_fire_standing_right"); 
           } else if (this.p.direction == "left") {
-            this.play("other_fire_standing_left");
+            this.play(this.p.playerColor + "_fire_standing_left");
           } else if (this.p.direction == "up") {
-            this.play("other_fire_standing_back");
+            this.play(this.p.playerColor + "_fire_standing_back");
           } else if (this.p.direction == "down") {
-            this.play("other_fire_standing_front");
+            this.play(this.p.playerColor + "_fire_standing_front");
           }
           
         }
         else {
+          var color = this.p.playerColor;
           if (this.p.direction == "right") {
-            setTimeout(this.play("other_stand_right"),1000);
+            setTimeout(this.play(color + "_stand_right"),1000);
           } else if (this.p.direction == "left") {
-            setTimeout(this.play("other_stand_left"),1000);
+            setTimeout(this.play(color + "_stand_left"),1000);
           } else if (this.p.direction == "up") {
-            setTimeout(this.play("other_stand_back"),1000);
+            setTimeout(this.play(color + "_stand_back"),1000);
           } else if (this.p.direction == "down") {
-            setTimeout(this.play("other_stand_front"),1000);
->>>>>>> 41a357014b2e6588665c55f88d6965f46fa7a069:client/game.js
+            setTimeout(this.play(color + "_stand_front"),1000);
           }
         }
       }

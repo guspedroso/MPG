@@ -1,7 +1,7 @@
-var Player = function(startX, startY, idNew) {
+var Player = function(startX, startY) {
   var x = startX;
   var y = startY;
-  var id = idNew;
+  var id;
   var special;
   var health = 10;
 
@@ -11,10 +11,6 @@ var Player = function(startX, startY, idNew) {
 
   function getY() {
     return y;
-  };
-  
-  function getID() {
-    return id;
   };
 
   function getHealth() {
@@ -44,7 +40,6 @@ var Player = function(startX, startY, idNew) {
   return {
     getX: getX,
     getY: getY,
-    getID: getID,
     getHealth: getHealth,
     getSpecial: getSpecial,
     setX: setX,

@@ -66,7 +66,6 @@ function onSocketConnect(client) {
 	client.on('new enemy', newEnemy);
   client.on('debug', debugOut);
   client.on('death', death);
-  client.on('door open', doorOpen);
 };
 
 function debugOut(data) {
@@ -74,34 +73,38 @@ function debugOut(data) {
 }
 
 function clientDisconnect() {
- // console.log("player disconnected " + this.id);
+  console.log("player disconnected " + this.id);
+	//console.log("Current # of players" + players.length);
 	//find player who disconnected
 	var disconnectPlayer = findPlayer(this.id);
 	//remove his punk ass
 	players.splice(players.indexOf(disconnectPlayer), 1);
-	this.broadcast.emit('disconnect', { pid: this.id });
+	
+	console.log("Current # of players" + players.length);
 };
 
 // This function creates our new player
 function addNewPlayer(data) {
-  // console.log(data);
-	// console.log("Creating new player...");
+  console.log(data);
+	console.log("Creating new player...");
 	
   // get the new Player data from our client
-  var newPlayer = new Player(data.x, data.y, this.id);
-  // newPlayer.id = this.id;
-  
+  var newPlayer = new Player(data.x, data.y);
+  newPlayer.id = this.id;
+
   // Here we will broadcast the new player info and coords to our other clients
-  this.broadcast.emit('new player', { pid: newPlayer.getID(), x: newPlayer.getX(), y: newPlayer.getY() });
+  this.broadcast.emit('new player', { id: newPlayer.id, x: newPlayer.getX(), y: newPlayer.getY() });
 
   // Here, we need to get the existing player info to our new player client
   var existingPlayer;
   for (var i = 0; i < players.length; i++) {
     existingPlayer = players[i];
-    this.emit('new player', { pid: existingPlayer.getID(), x: existingPlayer.getX(), y: existingPlayer.getY() });
+    this.emit('new player', { id: existingPlayer.id, x: existingPlayer.getX(), y: existingPlayer.getY() });
   };
+
+  // Here we add our new player to our players array
   players.push(newPlayer);
-	// console.log("Current # of players" + players.length);
+	console.log("Current # of players" + players.length);
 
 };
 
@@ -112,9 +115,9 @@ function movePlayer(data) {
 
 
   // Find the player to move
-	// console.log(this.id, " is moving...");
+	console.log(this.id, " is moving...");
 	var playerToMove = findPlayer(this.id);
-//	console.log("Start Coordinates: ", playerToMove.getX(), playerToMove.getY());
+	console.log("Start Coordinates: ", playerToMove.getX(), playerToMove.getY());
   // Set the new x and y for the player being moved
 	
 	//console.log("Moving by: ", data.x, data.y);
@@ -123,36 +126,32 @@ function movePlayer(data) {
   playerToMove.setX(data.x);
   playerToMove.setY(data.y);
   
-//	console.log("End Coordinates: ", playerToMove.getX(), playerToMove.getY());
-  this.broadcast.emit('move player', { pid: this.id, px: xs, py: ys, po: data.o });
+	console.log("End Coordinates: ", playerToMove.getX(), playerToMove.getY());
+  this.broadcast.emit('move player', { pid: playerToMove.id, 
+    px: data.x, py: data.y, pxs: xs, pys: ys, po: data.o });
 };
 
 function fireBullet(data) {
-  // console.log(this.id);
-  // console.log(data);
+  console.log(this.id);
+  console.log(data);
   this.broadcast.emit('fire bullet', { pid: this.id, px: data.px, py: data.py, po: data.po });
 };
 
 function playerHit(data) {
-  // console.log(this.id);
-  // console.log(data);
+  console.log(this.id);
+  console.log(data);
   this.broadcast.emit('player hit', { pid: this.id, pHP: data.pHP, pSP: data.pSP, pSPAmmo: data.pSPAmmo});
 }
 
 function playerSpecialStatus(data) {
-  // console.log(this.id);
-  // console.log(data);
+  console.log(this.id);
+  console.log(data);
   this.broadcast.emit('special', { pid: this.id, po: data.po, pAmmo: data.pAmmo, pA: data.pA });
 };
 
 function death() {
   this.broadcast.emit('remove player', { pid: this.id });
-};
-
-function doorOpen(data) {
-  this.broadcast.emit('door open', { doorX: data.doorX, doorY: data.doorY });
-};
-
+}
 
 // This function will locate the player within the array by its assigned ID
 function findPlayer(id) {
@@ -165,7 +164,7 @@ function findPlayer(id) {
 
 // This function creates a new enemy
 function newEnemy(data) {
-  // console.log(data);
+  console.log(data);
   // get the new enemy data from our client
   var newEnemy = new Enemy(data.x, data.y);
   newEnemy.id = this.id;

@@ -2,7 +2,8 @@ var Enemy = function(startX, startY) {
   var x = startX;
   var y = startY;
   var id;
-  var health = 5;
+  var special;
+  var health = 10;
 
   function getX() {
     return x;
@@ -28,14 +29,19 @@ var Enemy = function(startX, startY) {
     health = healthNew;
   };
 
+  function setSpecial(specialSpec) {
+    special = specialSpec;
+  };
 
   return {
     getX: getX,
     getY: getY,
     getHealth: getHealth,
+    getSpecial: getSpecial,
     setX: setX,
     setY: setY,
     setHealth: setHealth,
+    setSpecial: setSpecial,
     id: id
   }
 
