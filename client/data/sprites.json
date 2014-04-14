@@ -1,4 +1,5 @@
-{"player":{"sx":0,"sy":750,"cols":25,"tilew":75,"tileh":100,"frames":150},
+{"player":{"sx":0,"sy":0,"cols":25,"tilew":75,"tileh":100,"frames":50},
+"otherPlayer":{"sx":0,"sy":0,"cols":25,"tilew":75,"tileh":100,"frames":50},
 "enemy":{"sx":0,"sy":550,"cols":25,"tilew":75,"tileh":110,"frames":25},
 "playerBullet":{"sx":0,"sy":230,"cols":5,"tilew":18,"tileh":20,"frames":5},
 "life":{"sx":16,"sy":210,"cols":1,"tilew":20,"tileh":18,"frames":1},
