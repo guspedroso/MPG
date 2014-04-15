@@ -63,7 +63,7 @@ function onSocketConnect(client) {
   client.on('fire bullet', fireBullet);
 	client.on('player hit', playerHit);
 	client.on('special', playerSpecialStatus);
-	client.on('new enemy', newEnemy);
+	client.on('new enemy', addNewEnemy);
 	client.on('move enemy', moveEnemy);
   client.on('debug', debugOut);
   client.on('death', death);
@@ -80,8 +80,8 @@ function clientDisconnect() {
 	var disconnectPlayer = findPlayer(this.id);
 	var enemyOne = findEnemy(this.id);
 	enemies.splice(enemies.indexOf(enemyOne), 1);
-	var enemyTwo = findEnemy(this.id);
-	enemies.splice(enemies.indexOf(enemyTwo), 1);
+	//var enemyTwo = findEnemy(this.id);
+	//enemies.splice(enemies.indexOf(enemyTwo), 1);
 	//remove his punk ass
 	players.splice(players.indexOf(disconnectPlayer), 1);
 	this.broadcast.emit('disconnect', { pid: this.id });
@@ -93,22 +93,47 @@ function addNewPlayer(data) {
 	// console.log("Creating new player...");
 	
   // get the new Player data from our client
-  var newPlayer = new Player(data.x, data.y, this.id);
+  var newPlayer = new Player(data.x, data.y, this.id, data.t);
   // newPlayer.id = this.id;
-  
+  //console.log(data);
   // Here we will broadcast the new player info and coords to our other clients
-  this.broadcast.emit('new player', { pid: newPlayer.getID(), x: newPlayer.getX(), y: newPlayer.getY() });
+  this.broadcast.emit('new player', { pid: newPlayer.getID(), x: newPlayer.getX(), y: newPlayer.getY(), t: newPlayer.getT() });
 
   // Here, we need to get the existing player info to our new player client
   var existingPlayer;
   for (var i = 0; i < players.length; i++) {
     existingPlayer = players[i];
-    this.emit('new player', { pid: existingPlayer.getID(), x: existingPlayer.getX(), y: existingPlayer.getY() });
+    this.emit('new player', { pid: existingPlayer.getID(), x: existingPlayer.getX(), y: existingPlayer.getY(), t: existingPlayer.getT() });
   };
   players.push(newPlayer);
 	// console.log("Current # of players" + players.length);
 
 };
+
+// This function creates a new enemy
+function addNewEnemy(data) {
+  // console.log(data);
+  // get the new enemy data from our client
+  var newEnemy = new Enemy(data.x, data.y, this.id, data.t);
+  //newEnemy.id = this.id;
+
+  // Here we will broadcast the new enemy info and coords to our other clients
+  this.broadcast.emit('new enemy', { id: newEnemy.getID(), x: newEnemy.getX(), y: newEnemy.getY() , t: newEnemy.getT()});
+	
+	//console.log(newEnemy.id, newEnemy.getX(), newEnemy.getY());
+  // Here, we need to get the existing enemy info to our new enemy client
+  var existingEnemy;
+  for (var i = 0; i < enemies.length; i++) {
+		console.log("emitting enemy data");
+    existingEnemy = enemies[i];
+    this.emit('new enemy', { id: existingEnemy.getID(), x: existingEnemy.getX(), y: existingEnemy.getY(), t: existingEnemy.getT() });
+  };
+	enemies.push(newEnemy);
+  // Here we add our new enemy to our enemies array
+ 
+	console.log(enemies.length);
+};
+
 
 function movePlayer(data) {
   
@@ -118,19 +143,51 @@ function movePlayer(data) {
 
   // Find the player to move
 	// console.log(this.id, " is moving...");
-	var playerToMove = findPlayer(this.id);
+	//if(data.getT() == "player"){
+		var playerToMove = findPlayer(this.id);
+	//	console.log("Start Coordinates: ", playerToMove.getX(), playerToMove.getY());
+		// Set the new x and y for the player being moved
+		//console.log(data);
+		
+		//console.log("Moving by: ", data.x, data.y);
+		if(playerToMove){
+			var xs = playerToMove.getX();
+			var ys = playerToMove.getY();
+			playerToMove.setX(data.x);
+			playerToMove.setY(data.y);
+			
+		//	console.log("End Coordinates: ", playerToMove.getX(), playerToMove.getY());
+			this.broadcast.emit('move player', { pid: this.id, px: xs, py: ys, po: data.o });
+		}
+
+};
+
+function moveEnemy(data) {
+  
+  //console.log(data);
+	//console.log("Player moving...");
+
+
+  // Find the player to move
+	// console.log(this.id, " is moving...");
+	var enemyToMove = findEnemy(this.id);
 //	console.log("Start Coordinates: ", playerToMove.getX(), playerToMove.getY());
   // Set the new x and y for the player being moved
-	
-	//console.log("Moving by: ", data.x, data.y);
-  var xs = playerToMove.getX();
-  var ys = playerToMove.getY();
-  playerToMove.setX(data.x);
-  playerToMove.setY(data.y);
-  
-//	console.log("End Coordinates: ", playerToMove.getX(), playerToMove.getY());
-  this.broadcast.emit('move player', { pid: this.id, px: xs, py: ys, po: data.o });
+//	console.log(this.id);
+	//console.log(data);
+	//console.log(this.id, "is moving...");
+	if(enemyToMove){
+		//console.log(this.id, " Moving by: ", data.x, data.y);
+		var xs = enemyToMove.getX();
+		var ys = enemyToMove.getY();
+		enemyToMove.setX(data.x);
+		enemyToMove.setY(data.y);
+		
+	//	console.log("End Coordinates: ", playerToMove.getX(), playerToMove.getY());
+		this.broadcast.emit('move enemy', { pid: this.id, px: xs, py: ys, po: data.o });
+	}
 };
+
 
 function fireBullet(data) {
   // console.log(this.id);
@@ -168,50 +225,10 @@ function findPlayer(id) {
   };
 };
 
-// This function creates a new enemy
-function newEnemy(data) {
-  // console.log(data);
-  // get the new enemy data from our client
-  var newEnemy = new Enemy(data.x, data.y);
-  newEnemy.id = this.id;
 
-  // Here we will broadcast the new enemy info and coords to our other clients
-  this.broadcast.emit('new Enemy', { id: newEnemy.id, x: newEnemy.getX(), y: newEnemy.getY() });
-
-  // Here, we need to get the existing enemy info to our new enemy client
-  var existingEnemy;
-  for (var i = 0; i < enemies.length; i++) {
-    existingEnemy = enemies[i];
-    this.emit('new enemy', { id: existingEnemy.id, x: existingEnemy.getX(), y: existingEnemy.getY() });
-  };
-
-  // Here we add our new enemy to our enemies array
-  enemies.push(newEnemy);
-};
-
-function moveEnemy(data) {
-  
-  //console.log(data);
-	//console.log("Player moving...");
-
-
-  // Find the player to move
-	// console.log(this.id, " is moving...");
-	var enemyToMove = findEnemy(this.id);
-//	console.log("Start Coordinates: ", playerToMove.getX(), playerToMove.getY());
-  // Set the new x and y for the player being moved
-	
-	//console.log("Moving by: ", data.x, data.y);
-  var xs = enemyToMove.getX();
-  var ys = enemyToMove.getY();
-  enemyToMove.setX(data.x);
-  enemyToMove.setY(data.y);
-  
-//	console.log("End Coordinates: ", playerToMove.getX(), playerToMove.getY());
-  this.broadcast.emit('move enemy', { pid: this.id, px: xs, py: ys, po: data.o });
-};
 
 function findEnemy(id) {
+	//console.log(enemies.length);
   for (var i = 0; i < enemies.length; i++) {
     if (enemies[i].id == id) {
       return enemies[i];

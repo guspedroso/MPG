@@ -50,7 +50,7 @@ function setEventHandlers() {
 	socket.on('new player', addNewPlayer);
 	socket.on('move player', movePlayer);
 	socket.on('remove player', removePlayer);
-	socket.on('new enemy', newEnemy);
+	socket.on('new enemy', addNewEnemy);
 	socket.on('move enemy', moveEnemy);
   socket.on('fire bullet', drawFriendlyBullet);
 	socket.on('fire bullet enemy', drawEnemyBullet);
@@ -70,11 +70,14 @@ function socketDisconnect(data) {
   console.log("Disconnect from the socket server.");
   var playerDel = findPlayer(data.pid);
   console.log(playerDel.p.pid);
+	allPlayers.splice(allPlayers.indexOf(playerDel), 0);
   playerDel.destroy();
+	
 	var firstEnemy = findEnemy(data.pid);
+	allEnemies.splice(allEnemies.indexOf(firstEnemy), 1);
 	firstEnemy.destroy();
-	var secondEnemy = findEnemy(data.pid);
-	secondEnemy.destroy();
+	//var secondEnemy = findEnemy(data.pid);
+	//secondEnemy.destroy();
 };
 
 /* 
@@ -87,7 +90,7 @@ function addNewPlayer(data) {
 //	var newPlayer = new Player(data.x, data.y);
 	//newPlayer.id = data.id;
 	//push player to player list on client
-  var newPlayer = new Q.OtherPlayer1({ x: data.x, y: data.y, pid: data.pid });
+  var newPlayer = new Q.OtherPlayer1({ x: data.x, y: data.y, pid: data.pid, pt: data.t});
   console.log("new player " + data.x + " " + data.y);
   // Q(newPlayer).set("pid", data.pid);
   Q.stage().insert(newPlayer);
@@ -96,6 +99,18 @@ function addNewPlayer(data) {
   
 };
 
+function addNewEnemy(data) {
+	//console.log(data);
+	console.log("Enemy Added");
+	var newEnemy = new Q.OtherEnemy1({ x: data.x, y: data.y, pid: data.pid, t: data.t }); //change to Q.OtherEnemy1 for testing
+  console.log("new enemy " + data.pid + " " + data.x + " " + data.y);
+
+  Q.stage().insert(newEnemy);
+
+	allEnemies.push(newEnemy);
+	
+	console.log(allEnemies.length);
+};
 /*
  * movePlayer function which will set the new coordinates of the other players
  * every time a move message is received. 
@@ -111,10 +126,11 @@ function movePlayer(data) {
  // var playerMove2 = Q.stage().locate(data.pxs, data.pys, Q.SPRITE_PLAYER);
   
   playerMove.set({x: data.px, y: data.py});
-  console.log(data.px + " " + data.py);
+  //console.log(data.px + " " + data.py);
   playerMove.animate(data.po, "false");
   // Q("OtherPlayer1").set({x: data.px, y: data.py});
 //  Q("OtherPlayer1").invoke("step", data.po, "false");
+
 };
 
 /* 
@@ -126,32 +142,27 @@ function removePlayer(data) {
   playerDel.destroy();
 };
 
-function newEnemy(data) {
-	//console.log(data);
-	console.log("Enemy Added");
-	var newEnemy = new Q.Enemy({ x: data.x, y: data.y, pid: data.pid }); //change to Q.OtherEnemy1 for testing
-  console.log("new enemy " + data.x + " " + data.y);
 
-  Q.stage().insert(newEnemy);
-
-	allEnemies.push(newEnemy);
-};
 
 function moveEnemy(data) {
-
+	//console.log(data);
 	var enemyMove = findEnemy(data.pid);
 	//change his coordinates
 	// playerMove.setX(data.x);
 	// playerMove.setY(data.y);
+
  // var playerMove2 = Q.stage().locate(data.pxs, data.pys, Q.SPRITE_PLAYER);
-  
+	if(enemyMove){
+   console.log(data.pid + " " + data.px + " " + data.py);
   enemyMove.set({x: data.px, y: data.py});
-  console.log(data.px + " " + data.py);
+ 
   enemyMove.animate(data.po, "false");
+	}
 };
 
 function removeEnemy(data) {
-
+  var enemyDel = findEnemy(data.pid);
+	enemyDel.destroy();
 };
 
 /*
@@ -181,6 +192,7 @@ function doorOpen(data) {
  * array by the assigned socket ID. 
  */ 
 function findPlayer(id) {
+	console.log("player array " + allPlayers.length);
   for (var i = 0; i < allPlayers.length; i++) {
     if (allPlayers[i].p.pid == id) {
       return allPlayers[i];
@@ -189,8 +201,10 @@ function findPlayer(id) {
 };
 
 function findEnemy(id) {
+	//console.log("enemyarray " + allEnemies.length);
   for (var i = 0; i < allEnemies.length; i++) {
     if (allEnemies[i].p.pid == id) {
+			console.log(allEnemies[i]);
       return allEnemies[i];
     };
   };
@@ -215,15 +229,18 @@ function loadCoOp() {
   var px = currentPlayer.p.x;
   var py = currentPlayer.p.y;
   //sends new player request to server
-  console.log(px + " " + py);
-  socket.emit('new player', { x: px, y: py });
+  console.log("Player: " + px + " " + py);
+  socket.emit('new player', { x: px, y: py, t: "player" });
+	
 	var e1x = enemyOne.p.x;
 	var e1y = enemyOne.p.y;
+	console.log("Enemy: " + e1x + " " + e1y);
+	socket.emit('new enemy', { x: e1x, y: e1y, t: "enemy"});
+	//var e2x = enemyTwo.p.x;
+	//var e2y = enemyTwo.p.y;
+	//console.log("Enemy: " + e2x + " " + e2y);
+	//socket.emit('new enemy', { x: e2x, y: e2y , t: "enemy"});
 	
-	var e2x = enemyTwo.p.x;
-	var e2y = enemyTwo.p.y;
-	socket.emit('new enemy', { x: e1x, y: e1y });
-	socket.emit('new enemy', { x: e2x, y: e2y });
 };
 
 
@@ -943,6 +960,8 @@ function loadCoOp() {
         case "up":   p.vy = -p.speed; break;
         case "down": p.vy = p.speed; break;
       }
+		
+			socket.emit('move enemy', { x: p.x, y: p.y, o: p.direction });
     },
 
     // Try a random direction 90 degrees away from the 
@@ -1207,78 +1226,8 @@ function loadCoOp() {
      // setTimeout(function() { p.canFire = true}, 900);
     },
 		
-		    step: function(dt) {
-      var p = this.p;
-
-      // Randomly try to switch directions
-      if(Math.random() < p.switchPercent / 100) {
-        this.tryDirection();
-      }
-
-      // Add velocity in the direction we are currently heading.
-      switch(p.direction) {
-        case "left": p.vx = -p.speed; break;
-        case "right":p.vx = p.speed; break;
-        case "up":   p.vy = -p.speed; break;
-        case "down": p.vy = p.speed; break;
-      }
-    },
-
     // Try a random direction 90 degrees away from the 
     // current direction of movement
-    tryDirection: function() {
-      var p = this.p; 
-      var from = p.direction;
-      if(p.vy != 0 && p.vx == 0) {
-        p.direction = Math.random() < 0.5 ? 'left' : 'right';
-      } else if(p.vx != 0 && p.vy == 0) {
-        p.direction = Math.random() < 0.5 ? 'up' : 'down';
-      }
-    },
-
-    // Called every collision, if we're stuck,
-    // try moving in a direction 90 away from the normal
-    changeDirection: function(col) {
-      var p = this.p;
-      if(col.obj.isA("Player") || col.obj.isA("OtherPlayer1"))
-      {
-        return;
-      }
-        
-      if(p.vx == 0 && p.vy == 0) {
-        if(col.normalY) {
-          p.direction = Math.random() < 0.5 ? 'left' : 'right';
-        } else if(col.normalX) {
-          p.direction = Math.random() < 0.5 ? 'up' : 'down';
-        }
-      }
-    },
-		
-		tryToFire: function() {
-      var p = this.p;
-      var player = Q("Player").first();
-      var otherPlayer = Q("OtherPlayer1").first();
-     
-      if(!player)
-        return;
-      if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y < p.y && !player.p.invisible)) {
-        p.direction = "up";
-        this.fire();
-      }
-      else if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y > p.y && !player.p.invisible)) {
-        p.direction = "down";
-        this.fire();
-      }
-      else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x < p.x && !player.p.invisible)) {
-        p.direction = "left";
-        this.fire();
-      }
-      else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x > p.x && !player.p.invisible)) {
-        p.direction = "right";
-        this.fire();
-      }
-      
-    },
   });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2392,7 +2341,7 @@ function loadCoOp() {
     //stage.insert(new Q.Enemy({ x: 2000, y: 1200 + moveY})); //right
    // stage.insert(new Q.Enemy({ x: 500, y: 2000 + moveY})); //left
    // stage.insert(new Q.Enemy({ x: 600, y: 2000 + moveY})); //left
-    enemyTwo = stage.insert(new Q.Enemy({ x: 700, y: 2000 + moveY})); //left
+    //enemyTwo = stage.insert(new Q.Enemy({ x: 700, y: 2000 + moveY})); //left
    // stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY})); //top
    // stage.insert(new Q.Enemy({ x: 300, y: 300 + moveY})); //top
    // stage.insert(new Q.Enemy({ x: 2000, y: 300 + moveY})); //top
