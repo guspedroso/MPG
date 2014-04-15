@@ -386,7 +386,6 @@ function loadCoOp() {
   Q.SPRITE_OTHER_PLAYER = 131072;
 	//Q.SPRITE_OTHER_ENEMY = 262144;
 
-  vvar totalEnemiesKilled; //Keep track of enemies killed
   var moveX = 0; //If we need to move all the entities on the board consistently
   var moveY = 1150;
   var totalKeys = 0; //Once the player has gotten all the keys, open the boss door
