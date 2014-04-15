@@ -26,6 +26,7 @@ var socket;
 
 // player var
 var players;
+var playerColors = ["0","0","0","0"];
 var Player = require("./server/Player.js").Player;
 
 // enemy var
@@ -55,7 +56,12 @@ function setEventHandlers() {
 // Commands to perform upon connection, etc. 
 function onSocketConnect(client) {
   console.log("new client connected " + client.id);
-	//console.log("Current # of players" + players.length);
+  
+  // Check if we already have four players.
+  if (players.length >= 4) {
+    this.emit('server full');
+    client.disconnect(true);
+  }
   
   client.on('disconnect', clientDisconnect);
   client.on('new player', addNewPlayer);
@@ -63,8 +69,7 @@ function onSocketConnect(client) {
   client.on('fire bullet', fireBullet);
 	client.on('player hit', playerHit);
 	client.on('special', playerSpecialStatus);
-	client.on('new enemy', addNewEnemy);
-	client.on('move enemy', moveEnemy);
+	client.on('new enemy', newEnemy);
   client.on('debug', debugOut);
   client.on('death', death);
   client.on('door open', doorOpen);
@@ -75,119 +80,69 @@ function debugOut(data) {
 }
 
 function clientDisconnect() {
- // console.log("player disconnected " + this.id);
 	//find player who disconnected
 	var disconnectPlayer = findPlayer(this.id);
-	var enemyOne = findEnemy(this.id);
-	enemies.splice(enemies.indexOf(enemyOne), 1);
-	//var enemyTwo = findEnemy(this.id);
-	//enemies.splice(enemies.indexOf(enemyTwo), 1);
+  
 	//remove his punk ass
 	players.splice(players.indexOf(disconnectPlayer), 1);
+  
+  // free up that color slot
+  for (var i = 0; i < playerColors.length; i++) {
+    if (playerColors[i] == this.id) {
+      playerColors[i] = "0";
+    }
+  }
+  
 	this.broadcast.emit('disconnect', { pid: this.id });
 };
 
 // This function creates our new player
 function addNewPlayer(data) {
-  // console.log(data);
-	// console.log("Creating new player...");
-	
+ 
   // get the new Player data from our client
-  var newPlayer = new Player(data.x, data.y, this.id, data.t);
-  // newPlayer.id = this.id;
-  //console.log(data);
+  var newPlayer = new Player(data.x, data.y, this.id);
+  
+  // Now we will assign a color to our player
+  // search the color array
+  for (var i = 0; i < playerColors.length; i++) {
+    if (playerColors[i] == "0") {
+      playerColors[i] = this.id;
+      newPlayer.setColor(i);
+      break;
+    }
+  }
+  
+  this.emit('client color', newPlayer.getColor());
+  
   // Here we will broadcast the new player info and coords to our other clients
-  this.broadcast.emit('new player', { pid: newPlayer.getID(), x: newPlayer.getX(), y: newPlayer.getY(), t: newPlayer.getT() });
+  this.broadcast.emit('new player', { pid: newPlayer.getID(), x: newPlayer.getX(), y: newPlayer.getY(), c: newPlayer.getColor() });
 
   // Here, we need to get the existing player info to our new player client
   var existingPlayer;
   for (var i = 0; i < players.length; i++) {
     existingPlayer = players[i];
-    this.emit('new player', { pid: existingPlayer.getID(), x: existingPlayer.getX(), y: existingPlayer.getY(), t: existingPlayer.getT() });
+    this.emit('new player', { pid: existingPlayer.getID(), x: existingPlayer.getX(), y: existingPlayer.getY(), c: existingPlayer.getColor() });
   };
   players.push(newPlayer);
-	// console.log("Current # of players" + players.length);
-
+  // console.log("Current # of players" + players.length);
 };
-
-// This function creates a new enemy
-function addNewEnemy(data) {
-  // console.log(data);
-  // get the new enemy data from our client
-  var newEnemy = new Enemy(data.x, data.y, this.id, data.t);
-  //newEnemy.id = this.id;
-
-  // Here we will broadcast the new enemy info and coords to our other clients
-  this.broadcast.emit('new enemy', { id: newEnemy.getID(), x: newEnemy.getX(), y: newEnemy.getY() , t: newEnemy.getT()});
-	
-	//console.log(newEnemy.id, newEnemy.getX(), newEnemy.getY());
-  // Here, we need to get the existing enemy info to our new enemy client
-  var existingEnemy;
-  for (var i = 0; i < enemies.length; i++) {
-		console.log("emitting enemy data");
-    existingEnemy = enemies[i];
-    this.emit('new enemy', { id: existingEnemy.getID(), x: existingEnemy.getX(), y: existingEnemy.getY(), t: existingEnemy.getT() });
-  };
-	enemies.push(newEnemy);
-  // Here we add our new enemy to our enemies array
- 
-	console.log(enemies.length);
-};
-
 
 function movePlayer(data) {
-  
-  //console.log(data);
-	//console.log("Player moving...");
-
-
   // Find the player to move
 	// console.log(this.id, " is moving...");
-	//if(data.getT() == "player"){
-		var playerToMove = findPlayer(this.id);
-	//	console.log("Start Coordinates: ", playerToMove.getX(), playerToMove.getY());
-		// Set the new x and y for the player being moved
-		//console.log(data);
-		
-		//console.log("Moving by: ", data.x, data.y);
-		if(playerToMove){
-			var xs = playerToMove.getX();
-			var ys = playerToMove.getY();
-			playerToMove.setX(data.x);
-			playerToMove.setY(data.y);
-			
-		//	console.log("End Coordinates: ", playerToMove.getX(), playerToMove.getY());
-			this.broadcast.emit('move player', { pid: this.id, px: xs, py: ys, po: data.o });
-		}
-
-};
-
-function moveEnemy(data) {
-  
-  //console.log(data);
-	//console.log("Player moving...");
-
-
-  // Find the player to move
-	// console.log(this.id, " is moving...");
-	var enemyToMove = findEnemy(this.id);
+	var playerToMove = findPlayer(this.id);
 //	console.log("Start Coordinates: ", playerToMove.getX(), playerToMove.getY());
   // Set the new x and y for the player being moved
-//	console.log(this.id);
-	//console.log(data);
-	//console.log(this.id, "is moving...");
-	if(enemyToMove){
-		//console.log(this.id, " Moving by: ", data.x, data.y);
-		var xs = enemyToMove.getX();
-		var ys = enemyToMove.getY();
-		enemyToMove.setX(data.x);
-		enemyToMove.setY(data.y);
-		
-	//	console.log("End Coordinates: ", playerToMove.getX(), playerToMove.getY());
-		this.broadcast.emit('move enemy', { pid: this.id, px: xs, py: ys, po: data.o });
-	}
+	
+	//console.log("Moving by: ", data.x, data.y);
+  if (playerToMove) {
+    var xs = playerToMove.getX();
+    var ys = playerToMove.getY();
+    playerToMove.setX(data.x);
+    playerToMove.setY(data.y);
+    this.broadcast.emit('move player', { pid: this.id, px: xs, py: ys, po: data.o });
+  }
 };
-
 
 function fireBullet(data) {
   // console.log(this.id);
@@ -225,10 +180,29 @@ function findPlayer(id) {
   };
 };
 
+// This function creates a new enemy
+function newEnemy(data) {
+  // console.log(data);
+  // get the new enemy data from our client
+  var newEnemy = new Enemy(data.x, data.y);
+  newEnemy.id = this.id;
+
+  // Here we will broadcast the new enemy info and coords to our other clients
+  this.broadcast.emit('new Enemy', { id: newEnemy.id, x: newEnemy.getX(), y: newEnemy.getY() });
+
+  // Here, we need to get the existing enemy info to our new enemy client
+  var existingEnemy;
+  for (var i = 0; i < enemies.length; i++) {
+    existingEnemy = enemies[i];
+    this.emit('new enemy', { id: existingEnemy.id, x: existingEnemy.getX(), y: existingEnemy.getY() });
+  };
+
+  // Here we add our new enemy to our enemies array
+  enemies.push(newEnemy);
+};
 
 
 function findEnemy(id) {
-	//console.log(enemies.length);
   for (var i = 0; i < enemies.length; i++) {
     if (enemies[i].id == id) {
       return enemies[i];

@@ -21,11 +21,17 @@ var currentPlayer;
 //All the other players
 var allPlayers;
 
+//Enemy variables
+var enemyOne;
+var enemyTwo;
+//All the enemies
+var allEnemies;
+
 init();
 
 // This function initializes the socket connection, sets event handlers
 function init(){
-	socket = io.connect('http://' + document.location.host, { port: 80, 
+	socket = io.connect('http://' + document.location.host, { port: 12315, 
     transports: ["websocket"]});
 	// Sets default spawn coordinates
 	// var xValue = 1300,
@@ -33,6 +39,7 @@ function init(){
 	// Create player object for client
 	// currentPlayer = new Player(xValue, yValue);
 	allPlayers = [];
+	allEnemies = [];
 	setEventHandlers();
 };
 
@@ -43,10 +50,11 @@ function setEventHandlers() {
 	socket.on('new player', addNewPlayer);
 	socket.on('move player', movePlayer);
 	socket.on('remove player', removePlayer);
-	socket.on('new enemy', newEnemy);
+	socket.on('new enemy', addNewEnemy);
+	socket.on('move enemy', moveEnemy);
   socket.on('fire bullet', drawFriendlyBullet);
+	socket.on('fire bullet enemy', drawEnemyBullet);
   socket.on('door open', doorOpen);
-  socket.on('client color', clientColor);
 };
 
 // This function is executed upon socket connect message
@@ -62,7 +70,14 @@ function socketDisconnect(data) {
   console.log("Disconnect from the socket server.");
   var playerDel = findPlayer(data.pid);
   console.log(playerDel.p.pid);
+	allPlayers.splice(allPlayers.indexOf(playerDel), 0);
   playerDel.destroy();
+	
+	var firstEnemy = findEnemy(data.pid);
+	allEnemies.splice(allEnemies.indexOf(firstEnemy), 1);
+	firstEnemy.destroy();
+	//var secondEnemy = findEnemy(data.pid);
+	//secondEnemy.destroy();
 };
 
 /* 
@@ -75,15 +90,27 @@ function addNewPlayer(data) {
 //	var newPlayer = new Player(data.x, data.y);
 	//newPlayer.id = data.id;
 	//push player to player list on client
-  var newPlayerColor = playerColor(data.c);
-  var newPlayer = new Q.OtherPlayer1({ x: data.x, y: data.y, pid: data.pid, playerColor: newPlayerColor });
+  var newPlayer = new Q.OtherPlayer1({ x: data.x, y: data.y, pid: data.pid, pt: data.t});
   console.log("new player " + data.x + " " + data.y);
+  // Q(newPlayer).set("pid", data.pid);
   Q.stage().insert(newPlayer);
   // var newPlayer = new Q.OtherPlayer1({ x: data.x, y: data.y, id: data.id });
 	allPlayers.push(newPlayer);
   
 };
 
+function addNewEnemy(data) {
+	//console.log(data);
+	console.log("Enemy Added");
+	var newEnemy = new Q.OtherEnemy1({ x: data.x, y: data.y, pid: data.pid, t: data.t }); //change to Q.OtherEnemy1 for testing
+  console.log("new enemy " + data.pid + " " + data.x + " " + data.y);
+
+  Q.stage().insert(newEnemy);
+
+	allEnemies.push(newEnemy);
+	
+	console.log(allEnemies.length);
+};
 /*
  * movePlayer function which will set the new coordinates of the other players
  * every time a move message is received. 
@@ -99,10 +126,11 @@ function movePlayer(data) {
  // var playerMove2 = Q.stage().locate(data.pxs, data.pys, Q.SPRITE_PLAYER);
   
   playerMove.set({x: data.px, y: data.py});
-  console.log(data.px + " " + data.py);
+  //console.log(data.px + " " + data.py);
   playerMove.animate(data.po, "false");
   // Q("OtherPlayer1").set({x: data.px, y: data.py});
 //  Q("OtherPlayer1").invoke("step", data.po, "false");
+
 };
 
 /* 
@@ -114,17 +142,27 @@ function removePlayer(data) {
   playerDel.destroy();
 };
 
-function newEnemy(data) {
-	console.log(data);
-	console.log("Enemy Added");
-};
+
 
 function moveEnemy(data) {
+	//console.log(data);
+	var enemyMove = findEnemy(data.pid);
+	//change his coordinates
+	// playerMove.setX(data.x);
+	// playerMove.setY(data.y);
 
+ // var playerMove2 = Q.stage().locate(data.pxs, data.pys, Q.SPRITE_PLAYER);
+	if(enemyMove){
+   console.log(data.pid + " " + data.px + " " + data.py);
+  enemyMove.set({x: data.px, y: data.py});
+ 
+  enemyMove.animate(data.po, "false");
+	}
 };
 
 function removeEnemy(data) {
-
+  var enemyDel = findEnemy(data.pid);
+	enemyDel.destroy();
 };
 
 /*
@@ -138,7 +176,9 @@ function drawFriendlyBullet(data) {
 };
 
 function drawEnemyBullet(data) {
-
+  var enemyFire = findEnemy(data.pid);
+  enemyFire.animate(data.po, "true");
+  enemyFire.fire(data.po);
 };
 
 function doorOpen(data) {
@@ -147,15 +187,12 @@ function doorOpen(data) {
   doorDel.destroy();
 };
 
-function clientColor(data) {
-  currentPlayer.p.playerColor = playerColor(data);
-};
-
 /*
  * findPlayer function which finds the player within the local client player 
  * array by the assigned socket ID. 
  */ 
 function findPlayer(id) {
+	console.log("player array " + allPlayers.length);
   for (var i = 0; i < allPlayers.length; i++) {
     if (allPlayers[i].p.pid == id) {
       return allPlayers[i];
@@ -163,6 +200,15 @@ function findPlayer(id) {
   };
 };
 
+function findEnemy(id) {
+	//console.log("enemyarray " + allEnemies.length);
+  for (var i = 0; i < allEnemies.length; i++) {
+    if (allEnemies[i].p.pid == id) {
+			console.log(allEnemies[i]);
+      return allEnemies[i];
+    };
+  };
+};
 
 ///////////////////////////// SOCKET STUFF ABOVE ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,25 +229,19 @@ function loadCoOp() {
   var px = currentPlayer.p.x;
   var py = currentPlayer.p.y;
   //sends new player request to server
-  console.log(px + " " + py);
-  socket.emit('new player', { x: px, y: py });
+  console.log("Player: " + px + " " + py);
+  socket.emit('new player', { x: px, y: py, t: "player" });
+	
+	var e1x = enemyOne.p.x;
+	var e1y = enemyOne.p.y;
+	console.log("Enemy: " + e1x + " " + e1y);
+	socket.emit('new enemy', { x: e1x, y: e1y, t: "enemy"});
+	//var e2x = enemyTwo.p.x;
+	//var e2y = enemyTwo.p.y;
+	//console.log("Enemy: " + e2x + " " + e2y);
+	//socket.emit('new enemy', { x: e2x, y: e2y , t: "enemy"});
+	
 };
-
-function playerColor(colorInt) {
-  switch (colorInt) {
-    case 0:
-      return "blue";
-    case 1:
-      return "red";
-    case 2:
-      return "grey";
-    case 3:
-      return "green";
-    default:
-      return "blue";
-  }
-};
-
 
 
 ///////////////////////// SOME CRUCIAL FUNCTIONS ABOVE /////////////////////////
@@ -344,8 +384,9 @@ function playerColor(colorInt) {
   Q.SPRITE_EXPLOSION = 32768;
   Q.SPRITE_KEY = 65536;
   Q.SPRITE_OTHER_PLAYER = 131072;
+	//Q.SPRITE_OTHER_ENEMY = 262144;
 
-  var totalEnemiesKilled; //Keep track of enemies killed
+  vvar totalEnemiesKilled; //Keep track of enemies killed
   var moveX = 0; //If we need to move all the entities on the board consistently
   var moveY = 1150;
   var totalKeys = 0; //Once the player has gotten all the keys, open the boss door
@@ -365,7 +406,7 @@ function playerColor(colorInt) {
         sheet:"tree1",
         sprite:"tree1",
         type: Q.SPRITE_TREES,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_PLAYER_BULLET | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_OTHER_PLAYER
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_PLAYER_BULLET | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_OTHER_PLAYER //| Q.SPRITE_OTHER_ENEMY
       });
       this.on("hit",this,"collision");
     },
@@ -383,7 +424,7 @@ function playerColor(colorInt) {
         sheet:"tree2",
         sprite:"tree2",
         type: Q.SPRITE_TREES,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_PLAYER_BULLET | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_OTHER_PLAYER
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_PLAYER_BULLET | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_OTHER_PLAYER //| Q.SPRITE_OTHER_ENEMY
       });
       this.on("hit",this,"collision");
     },
@@ -401,7 +442,7 @@ function playerColor(colorInt) {
         sheet:"horizontalDoor",
         sprite:"horizontalDoor",
         type: Q.SPRITE_DOOR,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_OTHER_PLAYER
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_OTHER_PLAYER//| Q.SPRITE_OTHER_ENEMY
       });
       this.on("hit",this,"collision");
     },
@@ -422,6 +463,7 @@ function playerColor(colorInt) {
       }
     }
   });
+
 
   //golden horizontal door object 
   Q.Sprite.extend("goldenHorizontalDoor", {
@@ -482,7 +524,7 @@ function playerColor(colorInt) {
         sheet:"verticalDoor",
         sprite:"verticalDoor",
         type: Q.SPRITE_DOOR,
-        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_OTHER_PLAYER
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_OTHER_PLAYER //| Q.SPRITE_OTHER_ENEMY
       });
       this.on("hit",this,"collision");
     },
@@ -1036,6 +1078,11 @@ function playerColor(colorInt) {
         if (this.p.life == 0) 
         {
           totalEnemiesKilled++;
+          if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
+            this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
+          }
+          //this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
+          
           //generate a random value to determine whether to drop a life or special
           var lifeOrSpecial = Math.floor((Math.random()*2)+1);
 
@@ -1066,6 +1113,10 @@ function playerColor(colorInt) {
       else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
       {
         totalEnemiesKilled++;
+        if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
+          this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
+        }
+
         //generate a random value to determine whether to drop a life or special
         var lifeOrSpecial = Math.floor((Math.random()*2)+1);
 
@@ -1153,6 +1204,8 @@ function playerColor(colorInt) {
         case "up":   p.vy = -p.speed; break;
         case "down": p.vy = p.speed; break;
       }
+		
+			socket.emit('move enemy', { x: p.x, y: p.y, o: p.direction });
     },
 
     // Try a random direction 90 degrees away from the 
@@ -1211,97 +1264,255 @@ function playerColor(colorInt) {
       
     },
   });
+	
+	/*Q.animations("otherEnemy", {
+    otherenemy_fire_right_running: {frames:[10,11,9,11,10], rate: 1/10},
+    otherenemy_fire_left_running: {frames:[23,22,21,22,23], rate: 1/10},
+    otherenemy_fire_front_running: {frames:[4,5], rate: 1/3},
+    otherenemy_fire_back_running: {frames:[16,17], rate: 1/3},
+    otherenemy_fire_standing_right: {frames:[9], rate: 1/3},
+    otherenemy_fire_standing_left: {frames:[21], rate: 1/3},
+    otherenemy_fire_standing_front: {frames:[3], rate: 1/3},
+    otherenemy_fire_standing_back: {frames:[15], rate: 1/3},
+    otherenemy_run_right: {frames:[7,6,8,6,7], rate: 1/10},
+    otherenemy_run_left: {frames:[18,19,20,19,18], rate: 1/10},
+    otherenemy_run_front: {frames:[0,1], rate: 1/3},
+    otherenemy_run_back: {frames:[12,13], rate: 1/3},
+    otherenemy_stand_right: {frames:[8], rate: 1/3},
+    otherenemy_stand_left: {frames:[20], rate: 1/3},
+    otherenemy_stand_front: {frames:[2], rate: 1/3},
+    otherenemy_stand_back: {frames:[14], rate: 1/3},
+    otherenemy_die:{frames:[24], rate: 1/5}
+  });*/
+	
+	  Q.Sprite.extend("OtherEnemy1", {
+    init: function(p) {
+		
+      this._super(p,{
+        sheet:"enemy",
+        sprite:"enemy",
+				type: Q.SPRITE_ENEMY,
+        life: 5, //change the life to something reasonable once we get things going
+        bulletSpeed: 300,
+        speed: 100,
+        direction: 'left',
+        switchPercent: 2,
+        //type: Q.SPRITE_ENEMY,
+        canFire: true,
+        bulletInserted: false,
+        collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_EXPLOSION | Q.SPRITE_OTHER_PLAYER
+      });
+      this.add("2d, animation");
+      //this.on("hit.sprite",this,"hit");
+      this.on("step",this,"animate");
+      //this.on('hit',this,"changeDirection");
+      //this.on("step",this,"tryToFire");
+      //this.on("step",this,"animate")
+    },
+
+    animate: function(po, pf) {
+       if(po == "right") {
+        //set the direction of the player depending on the input
+        this.p.direction = "right";
+
+        //play the fire animation if input reads that the player is firing,
+        //else just play the running animation
+        if (pf == "true") {
+          this.play("enemy_fire_right_running");
+        }
+         else {
+            this.play("enemy_run_right");
+        }
+      } else if (po == "left") {
+        this.p.direction = "left";
+        if (pf == "true") {
+          this.play("enemy_fire_left_running")
+        }
+        else {
+          this.play("enemy_run_left");
+        }
+      }
+      else if (po == "up") {
+        this.p.direction = "up";
+        if (pf == "true") {
+          this.play("enemy_fire_back_running")
+        }
+        else {
+          this.play("enemy_run_back");
+        }
+      } else if (po == "down") {
+        this.p.direction = "down";
+        if (pf == "true") {
+          this.play("enemy_fire_front_running")
+        }
+        else {
+          this.play("enemy_run_front");
+        }
+      }
+    },
+
+   /* hit: function(col) {
+      var life;
+      if(col.obj.isA("PlayerBullet")) 
+      {
+        this.p.life--;
+        if (this.p.life == 0) 
+        {
+          totalEnemiesKilled++;
+          if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
+            this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
+          }
+          //this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
+          
+          //generate a random value to determine whether to drop a life or special
+          var lifeOrSpecial = Math.floor((Math.random()*2)+1);
+
+          if (lifeOrSpecial == 1) 
+          {
+            life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
+            setTimeout(function(){life.destroy()},10000);
+          }
+          else if (lifeOrSpecial == 2)
+          {
+            var oneOfTheSpecials = Math.floor((Math.random()*4)+1);
+            switch(oneOfTheSpecials)
+            {
+              case 1: this.stage.insert(new Q.SpecialGun({ x: this.p.x, y: this.p.y }));
+                break;
+              case 2: this.stage.insert(new Q.SpecialSpeed({ x: this.p.x, y: this.p.y }));
+                break;
+              case 3: this.stage.insert(new Q.SpecialInvincibility({ x: this.p.x, y: this.p.y }));
+                break;
+              case 4: this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
+                break;
+            }
+          }
+        
+          this.destroy();
+        }
+      }
+      else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
+      {
+        totalEnemiesKilled++;
+        if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
+          this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
+        }
+
+        //generate a random value to determine whether to drop a life or special
+        var lifeOrSpecial = Math.floor((Math.random()*2)+1);
+
+        if (lifeOrSpecial == 1) 
+        {
+          life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
+          setTimeout(function(){life.destroy()},10000);
+        }
+        else
+        {
+          var oneOfTheSpecials = Math.floor((Math.random()*4)+1);
+          switch(oneOfTheSpecials)
+          {
+            case 1: this.stage.insert(new Q.SpecialGun({ x: this.p.x, y: this.p.y }));
+              break;
+            case 2: this.stage.insert(new Q.SpecialSpeed({ x: this.p.x, y: this.p.y }));
+              break;
+            case 3: this.stage.insert(new Q.SpecialInvincibility({ x: this.p.x, y: this.p.y }));
+              break;
+            case 4: this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
+              break;
+          }
+        }
+        
+        this.destroy();
+      }
+      else if(col.obj.isA("Player") || col.obj.isA("OtherPlayer1"))
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
+    },*/
+
+    fire: function(po) {
+      var p = this.p;
+      var angle, x, y;
+      //if (!p.canFire)
+      //  return;
+    //  p.canFire = false;
+      //See what direction the player is in and set the bullet to go that way
+      if (po == "left") {
+        angle = -90;
+        x = this.p.x - 47;
+        y = this.p.y + 2;
+      } else if (po == "right") {
+        angle = 90;
+        x = this.p.x + 47;
+        y = this.p.y + 2;
+      } else if (po == "up") {
+        angle = 0;
+        x = this.p.x - 8;
+        y = this.p.y - 60;
+      } else if (po == "down") {
+        angle = 180;
+        x = this.p.x + 10;
+        y = this.p.y + 60;
+      }
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+     // p.bulletInserted = true;
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.EnemyBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
+      //setTimeout(function() { p.bulletInserted = false}, 80);
+     // setTimeout(function() { p.canFire = true}, 900);
+    },
+		
+    // Try a random direction 90 degrees away from the 
+    // current direction of movement
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// PLAYER CLASSES /////////////////////////////////
 
- //Set up the animations for the player, reading frames from sprites.png
+  //Set up the animations for the player, reading frames from sprites.png
   Q.animations("player", {
-    red_fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
-    red_fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
-    red_fire_front_running: {frames:[4,5], rate: 1/4},
-    red_fire_back_running: {frames:[16,17], rate: 1/4},
-    red_fire_standing_right: {frames:[9], rate: 1/4},
-    red_fire_standing_left: {frames:[21], rate: 1/4},
-    red_fire_standing_front: {frames:[3], rate: 1/4},
-    red_fire_standing_back: {frames:[15], rate: 1/4},
-    red_run_right: {frames:[7,6,8,6,7], rate: 1/15},
-    red_run_left: {frames:[18,19,20,19,18], rate: 1/15},
-    red_run_front: {frames:[0,1], rate: 1/5},
-    red_run_back: {frames:[12,13], rate: 1/5},
-    red_stand_right: {frames:[8], rate: 1/5},
-    red_stand_left: {frames:[20], rate: 1/5},
-    red_stand_front: {frames:[2], rate: 1/5},
-    red_stand_back: {frames:[14], rate: 1/5},
-    red_die:{frames:[24], rate: 1/5},
-    green_fire_right_running: {frames:[35,36,34,36,35], rate: 1/15},
-    green_fire_left_running: {frames:[48,47,46,47,48], rate: 1/15},
-    green_fire_front_running: {frames:[29,30], rate: 1/4},
-    green_fire_back_running: {frames:[41,42], rate: 1/4},
-    green_fire_standing_right: {frames:[34], rate: 1/4},
-    green_fire_standing_left: {frames:[46], rate: 1/4},
-    green_fire_standing_front: {frames:[28], rate: 1/4},
-    green_fire_standing_back: {frames:[40], rate: 1/4},
-    green_run_right: {frames:[32,31,33,31,32], rate: 1/15},
-    green_run_left: {frames:[43,44,45,44,43], rate: 1/15},
-    green_run_front: {frames:[25,26], rate: 1/5},
-    green_run_back: {frames:[37,38], rate: 1/5},
-    green_stand_right: {frames:[33], rate: 1/5},
-    green_stand_left: {frames:[45], rate: 1/5},
-    green_stand_front: {frames:[27], rate: 1/5},
-    green_stand_back: {frames:[39], rate: 1/5},
-    green_die:{frames:[49], rate: 1/5},
-    grey_fire_right_running: {frames:[35+25,36+25,34+25,36+25,35+25], rate: 1/15},
-    grey_fire_left_running: {frames:[48+25,47+25,46+25,47+25,48+25], rate: 1/15},
-    grey_fire_front_running: {frames:[29+25,30+25], rate: 1/4},
-    grey_fire_back_running: {frames:[41+25,42+25], rate: 1/4},
-    grey_fire_standing_right: {frames:[34+25], rate: 1/4},
-    grey_fire_standing_left: {frames:[46+25], rate: 1/4},
-    grey_fire_standing_front: {frames:[28+25], rate: 1/4},
-    grey_fire_standing_back: {frames:[40+25], rate: 1/4},
-    grey_run_right: {frames:[32+25,31+25,33+25,31+25,32+25], rate: 1/15},
-    grey_run_left: {frames:[43+25,44+25,45+25,44+25,43+25], rate: 1/15},
-    grey_run_front: {frames:[25+25,26+25], rate: 1/5},
-    grey_run_back: {frames:[37+25,38+25], rate: 1/5},
-    grey_stand_right: {frames:[33+25], rate: 1/5},
-    grey_stand_left: {frames:[45+25], rate: 1/5},
-    grey_stand_front: {frames:[27+25], rate: 1/5},
-    grey_stand_back: {frames:[39+25], rate: 1/5},
-    grey_die:{frames:[49+25], rate: 1/5},
-    invisible_fire_right_running: {frames:[35+50,36+50,34+50,36+50,35+50], rate: 1/15},
-    invisible_fire_left_running: {frames:[48+50,47+50,46+50,47+50,48+50], rate: 1/15},
-    invisible_fire_front_running: {frames:[29+50,30+50], rate: 1/4},
-    invisible_fire_back_running: {frames:[41+50,42+50], rate: 1/4},
-    invisible_fire_standing_right: {frames:[34+50], rate: 1/4},
-    invisible_fire_standing_left: {frames:[46+50], rate: 1/4},
-    invisible_fire_standing_front: {frames:[28+50], rate: 1/4},
-    invisible_fire_standing_back: {frames:[40+50], rate: 1/4},
-    invisible_run_right: {frames:[32+50,31+50,33+50,31+50,32+50], rate: 1/15},
-    invisible_run_left: {frames:[43+50,44+50,45+50,44+50,43+50], rate: 1/15},
-    invisible_run_front: {frames:[25+50,26+50], rate: 1/5},
-    invisible_run_back: {frames:[37+50,38+50], rate: 1/5},
-    invisible_stand_right: {frames:[33+50], rate: 1/5},
-    invisible_stand_left: {frames:[45+50], rate: 1/5},
-    invisible_stand_front: {frames:[27+50], rate: 1/5},
-    invisible_stand_back: {frames:[39+50], rate: 1/5},
-    invisible_die:{frames:[49+50], rate: 1/5},
-    blue_fire_right_running: {frames:[35+75,36+75,34+75,36+75,35+75], rate: 1/15},
-    blue_fire_left_running: {frames:[48+75,47+75,46+75,47+75,48+75], rate: 1/15},
-    blue_fire_front_running: {frames:[29+75,30+75], rate: 1/4},
-    blue_fire_back_running: {frames:[41+75,42+75], rate: 1/4},
-    blue_fire_standing_right: {frames:[34+75], rate: 1/4},
-    blue_fire_standing_left: {frames:[46+75], rate: 1/4},
-    blue_fire_standing_front: {frames:[28+75], rate: 1/4},
-    blue_fire_standing_back: {frames:[40+75], rate: 1/4},
-    blue_run_right: {frames:[32+75,31+75,33+75,31+75,32+75], rate: 1/15},
-    blue_run_left: {frames:[43+75,44+75,45+75,44+75,43+75], rate: 1/15},
-    blue_run_front: {frames:[25+75,26+75], rate: 1/5},
-    blue_run_back: {frames:[37+75,38+75], rate: 1/5},
-    blue_stand_right: {frames:[33+75], rate: 1/5},
-    blue_stand_left: {frames:[45+75], rate: 1/5},
-    blue_stand_front: {frames:[27+75], rate: 1/5},
-    blue_stand_back: {frames:[39+75], rate: 1/5},
-    blue_die:{frames:[49+75], rate: 1/5},
+    fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
+    fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
+    fire_front_running: {frames:[4,5], rate: 1/4},
+    fire_back_running: {frames:[16,17], rate: 1/4},
+    fire_standing_right: {frames:[9], rate: 1/4},
+    fire_standing_left: {frames:[21], rate: 1/4},
+    fire_standing_front: {frames:[3], rate: 1/4},
+    fire_standing_back: {frames:[15], rate: 1/4},
+    run_right: {frames:[7,6,8,6,7], rate: 1/15},
+    run_left: {frames:[18,19,20,19,18], rate: 1/15},
+    run_front: {frames:[0,1], rate: 1/5},
+    run_back: {frames:[12,13], rate: 1/5},
+    stand_right: {frames:[8], rate: 1/5},
+    stand_left: {frames:[20], rate: 1/5},
+    stand_front: {frames:[2], rate: 1/5},
+    stand_back: {frames:[14], rate: 1/5},
+    die:{frames:[24], rate: 1/5},
+    invisible_fire_right_running: {frames:[35,36,34,36,35], rate: 1/15},
+    invisible_fire_left_running: {frames:[48,47,46,47,48], rate: 1/15},
+    invisible_fire_front_running: {frames:[29,30], rate: 1/4},
+    invisible_fire_back_running: {frames:[41,42], rate: 1/4},
+    invisible_fire_standing_right: {frames:[34], rate: 1/4},
+    invisible_fire_standing_left: {frames:[46], rate: 1/4},
+    invisible_fire_standing_front: {frames:[28], rate: 1/4},
+    invisible_fire_standing_back: {frames:[40], rate: 1/4},
+    invisible_run_right: {frames:[32,31,33,31,32], rate: 1/15},
+    invisible_run_left: {frames:[43,44,45,44,43], rate: 1/15},
+    invisible_run_front: {frames:[25,26], rate: 1/5},
+    invisible_run_back: {frames:[37,38], rate: 1/5},
+    invisible_stand_right: {frames:[33], rate: 1/5},
+    invisible_stand_left: {frames:[45], rate: 1/5},
+    invisible_stand_front: {frames:[27], rate: 1/5},
+    invisible_stand_back: {frames:[39], rate: 1/5},
+    invisible_die:{frames:[49], rate: 1/5},
   });
 
   //Create the player object
@@ -1311,13 +1522,11 @@ function playerColor(colorInt) {
       this._super(p,{
         sheet:"player",
         sprite:"player",
-        frame: 24,
         type: Q.SPRITE_PLAYER,
         stepDelay: 0.1,
         life: 10,
         bulletSpeed: 1000,
         special: false,
-        playerColor: "blue",
         leftbulletInserted: false,
         rightbulletInserted: false,
         upbulletInserted: false,
@@ -1333,7 +1542,7 @@ function playerColor(colorInt) {
         invisible: false,
         enemiesKilled: 0,
         specialBullets: 0,
-        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY
+        collisionMask: Q.SPRITE_TILES | Q.SPRITE_ENEMY | Q.SPRITE_ENEMY_BULLET | Q.SPRITE_LIFE | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL | Q.SPRITE_KEY 
       });
 
       this.add("2d, stepControls, animation");
@@ -1577,20 +1786,6 @@ function playerColor(colorInt) {
     
     //step function for controlling how this sprite will move
     step: function(dt) {
-      /*
-      if (this.p.playerColor == "red") {
-        this.p.frame = 2;
-      }
-      else if (this.p.playerColor == "blue") {
-        this.p.frame = 102;
-      }
-      else if (this.p.playerColor == "green") {
-        this.p.frame = 27;
-      }
-      else if (this.p.playerColor == "grey") {
-        this.p.frame = 52;
-      }
-      */
       //Grab the input and determine which animation to play
       if(Q.inputs["right"]) {
         //set the direction of the player depending on the input
@@ -1603,7 +1798,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_right_running");
           }
           else {
-            this.play(this.p.playerColor + "_fire_right_running");
+            this.play("fire_right_running");
           }
           
         }
@@ -1612,7 +1807,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_left_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_left_running")
+            this.play("fire_left_running")
           }
         }
         else if (this.p.rightbulletInserted) {
@@ -1620,7 +1815,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_right_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_right_running")
+            this.play("fire_right_running")
           }
         }
         else if (this.p.upbulletInserted) {
@@ -1628,7 +1823,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_back_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_back_running")
+            this.play("fire_back_running")
           }
         }
         else if (this.p.downbulletInserted) {
@@ -1636,7 +1831,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_front_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_front_running")
+            this.play("fire_front_running")
           }
         }
         else {
@@ -1644,7 +1839,7 @@ function playerColor(colorInt) {
             this.play("invisible_run_right");
           }
           else {
-            this.play(this.p.playerColor + "_run_right");
+            this.play("run_right");
           }
           
         }
@@ -1655,7 +1850,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_left_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_left_running")
+            this.play("fire_left_running")
           }
         }
         else if (this.p.leftbulletInserted) {
@@ -1663,7 +1858,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_left_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_left_running")
+            this.play("fire_left_running")
           }
         }
         else if (this.p.rightbulletInserted) {
@@ -1671,7 +1866,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_right_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_right_running")
+            this.play("fire_right_running")
           }
         }
         else if (this.p.upbulletInserted) {
@@ -1679,7 +1874,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_back_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_back_running")
+            this.play("fire_back_running")
           }
         }
         else if (this.p.downbulletInserted) {
@@ -1687,7 +1882,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_front_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_front_running")
+            this.play("fire_front_running")
           }
         }
         else {
@@ -1695,7 +1890,7 @@ function playerColor(colorInt) {
             this.play("invisible_run_left");
           }
           else {
-            this.play(this.p.playerColor + "_run_left");
+            this.play("run_left");
           }
           
         }
@@ -1707,7 +1902,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_back_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_back_running")
+            this.play("fire_back_running")
           }
         }
         else if (this.p.leftbulletInserted) {
@@ -1715,7 +1910,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_left_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_left_running")
+            this.play("fire_left_running")
           }
         }
         else if (this.p.rightbulletInserted) {
@@ -1723,7 +1918,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_right_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_right_running")
+            this.play("fire_right_running")
           }
         }
         else if (this.p.upbulletInserted) {
@@ -1731,7 +1926,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_back_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_back_running")
+            this.play("fire_back_running")
           }
         }
         else if (this.p.downbulletInserted) {
@@ -1739,7 +1934,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_front_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_front_running")
+            this.play("fire_front_running")
           }
         }
         else {
@@ -1747,7 +1942,7 @@ function playerColor(colorInt) {
             this.play("invisible_run_back");
           }
           else {
-            this.play(this.p.playerColor + "_run_back");
+            this.play("run_back");
           }
           
         }
@@ -1758,7 +1953,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_front_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_front_running")
+            this.play("fire_front_running")
           }
         }
         else if (this.p.leftbulletInserted) {
@@ -1766,7 +1961,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_left_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_left_running")
+            this.play("fire_left_running")
           }
         }
         else if (this.p.rightbulletInserted) {
@@ -1774,7 +1969,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_right_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_right_running")
+            this.play("fire_right_running")
           }
         }
         else if (this.p.upbulletInserted) {
@@ -1782,7 +1977,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_back_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_back_running")
+            this.play("fire_back_running")
           }
         }
         else if (this.p.downbulletInserted) {
@@ -1790,7 +1985,7 @@ function playerColor(colorInt) {
             this.play("invisible_fire_front_running")
           }
           else {
-            this.play(this.p.playerColor + "_fire_front_running")
+            this.play("fire_front_running")
           }
         }
         else {
@@ -1798,7 +1993,7 @@ function playerColor(colorInt) {
             this.play("invisible_run_front");
           }
           else {
-            this.play(this.p.playerColor + "_run_front");
+            this.play("run_front");
           }
         }
       }
@@ -1809,28 +2004,28 @@ function playerColor(colorInt) {
               this.play("invisible_fire_standing_right"); 
             }
             else {
-              this.play(this.p.playerColor + "_fire_standing_right"); 
+              this.play("fire_standing_right"); 
             }
           } else if (this.p.direction == "left") {
             if (this.p.invisible) {
               this.play("invisible_fire_standing_left");
             }
             else {
-              this.play(this.p.playerColor + "_fire_standing_left");
+              this.play("fire_standing_left");
             }
           } else if (this.p.direction == "up") {
             if (this.p.invisible) {
               this.play("invisible_fire_standing_back");
             }
             else {
-              this.play(this.p.playerColor + "_fire_standing_back");
+              this.play("fire_standing_back");
             }
           } else if (this.p.direction == "down") {
             if (this.p.invisible) {
               this.play("invisible_fire_standing_front");
             }
             else {
-              this.play(this.p.playerColor + "_fire_standing_front");
+              this.play("fire_standing_front");
             }
           }
           
@@ -1841,33 +2036,89 @@ function playerColor(colorInt) {
               this.play("invisible_stand_right"); 
             }
             else {
-              this.play(this.p.playerColor + "_stand_right"); 
+              this.play("stand_right"); 
             }
           } else if (this.p.direction == "left") {
             if (this.p.invisible) {
               this.play("invisible_stand_left"); 
             }
             else {
-              this.play(this.p.playerColor + "_stand_left"); 
+              this.play("stand_left"); 
             }
           } else if (this.p.direction == "up") {
             if (this.p.invisible) {
               this.play("invisible_stand_back"); 
             }
             else {
-              this.play(this.p.playerColor + "_stand_back"); 
+              this.play("stand_back"); 
             }
           } else if (this.p.direction == "down") {
             if (this.p.invisible) {
               this.play("invisible_stand_front"); 
             }
             else {
-              this.play(this.p.playerColor + "_stand_front"); 
+              this.play("stand_front"); 
             }
           }
         }
       }
     },
+  });
+/*
+  Q.el.addEventListener('mousemove',function(e) {
+    var x = e.offsetX || e.layerX,
+        y = e.offsetY || e.layerY,
+        stage = Q.stage();
+    var stageX = Q.canvasToStageX(x, stage),
+        stageY = Q.canvasToStageY(y, stage);
+
+    var obj = stage.locate(stageX,stageY);
+
+    if(currentObj) { currentObj.p.over = false; }
+    if(obj) {
+      currentObj = obj;
+      obj.p.over = true;
+
+
+      }
+  });
+*/
+  //Set up the animations for the other player, reading frames from otherPlayer in sprites.png
+  Q.animations("otherPlayer", {
+    other_fire_right_running: {frames:[10,11,9,11,10], rate: 1/15},
+    other_fire_left_running: {frames:[23,22,21,22,23], rate: 1/15},
+    other_fire_front_running: {frames:[4,5], rate: 1/4},
+    other_fire_back_running: {frames:[16,17], rate: 1/4},
+    other_fire_standing_right: {frames:[9], rate: 1/4},
+    other_fire_standing_left: {frames:[21], rate: 1/4},
+    other_fire_standing_front: {frames:[3], rate: 1/4},
+    other_fire_standing_back: {frames:[15], rate: 1/4},
+    other_run_right: {frames:[7,6,8,6,7], rate: 1/15},
+    other_run_left: {frames:[18,19,20,19,18], rate: 1/15},
+    other_run_front: {frames:[0,1], rate: 1/5},
+    other_run_back: {frames:[12,13], rate: 1/5},
+    other_stand_right: {frames:[8], rate: 1/5},
+    other_stand_left: {frames:[20], rate: 1/5},
+    other_stand_front: {frames:[2], rate: 1/5},
+    other_stand_back: {frames:[14], rate: 1/5},
+    other_die:{frames:[24], rate: 1/5},
+    other_invisible_fire_right_running: {frames:[35,36,34,36,35], rate: 1/15},
+    other_invisible_fire_left_running: {frames:[48,47,46,47,48], rate: 1/15},
+    other_invisible_fire_front_running: {frames:[29,30], rate: 1/4},
+    other_invisible_fire_back_running: {frames:[41,42], rate: 1/4},
+    other_invisible_fire_standing_right: {frames:[34], rate: 1/4},
+    other_invisible_fire_standing_left: {frames:[46], rate: 1/4},
+    other_invisible_fire_standing_front: {frames:[28], rate: 1/4},
+    other_invisible_fire_standing_back: {frames:[40], rate: 1/4},
+    other_invisible_run_right: {frames:[32,31,33,31,32], rate: 1/15},
+    other_invisible_run_left: {frames:[43,44,45,44,43], rate: 1/15},
+    other_invisible_run_front: {frames:[25,26], rate: 1/5},
+    other_invisible_run_back: {frames:[37,38], rate: 1/5},
+    other_invisible_stand_right: {frames:[33], rate: 1/5},
+    other_invisible_stand_left: {frames:[45], rate: 1/5},
+    other_invisible_stand_front: {frames:[27], rate: 1/5},
+    other_invisible_stand_back: {frames:[39], rate: 1/5},
+    other_invisible_die:{frames:[49], rate: 1/5},
   });
 
   //Create the other player object
@@ -1875,14 +2126,12 @@ function playerColor(colorInt) {
     init: function(p) {
 
       this._super(p,{
-        sheet:"player",
-        sprite:"player", 
-        frame: 24,
+        sheet:"otherPlayer",
+        sprite:"otherPlayer", //other player animation is broken! only works with player
         type: Q.SPRITE_OTHER_PLAYER,
         stepDelay: 0.1,
         life: 10,
         bulletSpeed: 1000,
-        playerColor: "red",
         special: false,
         bulletInserted: false,
         specialBulletInserted: false,
@@ -2069,60 +2318,59 @@ function playerColor(colorInt) {
         //play the fire animation if input reads that the player is firing,
         //else just play the running animation
         if (pf == "true") {
-          this.play(this.p.playerColor + "_fire_right_running");
+          this.play("other_fire_right_running");
         }
          else {
-            this.play(this.p.playerColor + "_run_right");
+            this.play("other_run_right");
         }
       } else if (po == "left") {
         this.p.direction = "left";
         if (pf == "true") {
-          this.play(this.p.playerColor + "_fire_left_running")
+          this.play("other_fire_left_running")
         }
         else {
-          this.play(this.p.playerColor + "_run_left");
+          this.play("other_run_left");
         }
       }
       else if (po == "up") {
         this.p.direction = "up";
         if (pf == "true") {
-          this.play(this.p.playerColor + "_fire_back_running")
+          this.play("other_fire_back_running")
         }
         else {
-          this.play(this.p.playerColor + "_run_back");
+          this.play("other_run_back");
         }
       } else if (po == "down") {
         this.p.direction = "down";
         if (pf == "true") {
-          this.play(this.p.playerColor + "_fire_front_running")
+          this.play("other_fire_front_running")
         }
         else {
-          this.play(this.p.playerColor + "_run_front");
+          this.play("other_run_front");
         }
       }
       else {
         if (pf == "true") {
           if (this.p.direction == "right") {
-            this.play(this.p.playerColor + "_fire_standing_right"); 
+            this.play("other_fire_standing_right"); 
           } else if (this.p.direction == "left") {
-            this.play(this.p.playerColor + "_fire_standing_left");
+            this.play("other_fire_standing_left");
           } else if (this.p.direction == "up") {
-            this.play(this.p.playerColor + "_fire_standing_back");
+            this.play("other_fire_standing_back");
           } else if (this.p.direction == "down") {
-            this.play(this.p.playerColor + "_fire_standing_front");
+            this.play("other_fire_standing_front");
           }
           
         }
         else {
-          var color = this.p.playerColor;
           if (this.p.direction == "right") {
-            setTimeout(this.play(color + "_stand_right"),1000);
+            setTimeout(this.play("other_stand_right"),1000);
           } else if (this.p.direction == "left") {
-            setTimeout(this.play(color + "_stand_left"),1000);
+            setTimeout(this.play("other_stand_left"),1000);
           } else if (this.p.direction == "up") {
-            setTimeout(this.play(color + "_stand_back"),1000);
+            setTimeout(this.play("other_stand_back"),1000);
           } else if (this.p.direction == "down") {
-            setTimeout(this.play(color + "_stand_front"),1000);
+            setTimeout(this.play("other_stand_front"),1000);
           }
         }
       }
@@ -2330,27 +2578,20 @@ function playerColor(colorInt) {
     stage.insert(new Q.verticalDoor({ x: 1840, y: 1264 + moveY}));
     stage.insert(new Q.goldenHorizontalDoor({ x: 1136, y: 300 + moveY}));
     
-    //insert the keys
-    stage.insert(new Q.Key({ x: 1300, y: 1350 + moveY})); //spawn room
-    stage.insert(new Q.Key({ x: 2100, y: 1250 + moveY})); //right room
-    stage.insert(new Q.Key({ x: 80, y: 2420 + moveY})); //left room
-    stage.insert(new Q.Key({ x: 1350, y: 2000 + moveY})); //bottom room
-    stage.insert(new Q.Key({ x: 100, y: 200 + moveY})); //top room
-
     //insert the player
     currentPlayer = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
     
     //insert the enemies
     // stage.insert(new Q.Enemy({ x: 1800, y: 1500 + moveY})); // spawn room
-    stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
-    stage.insert(new Q.Enemy({ x: 1350, y: 2000 + moveY})); //bottom 
-    stage.insert(new Q.Enemy({ x: 2000, y: 1200 + moveY})); //right
-    stage.insert(new Q.Enemy({ x: 500, y: 2000 + moveY})); //left
-    stage.insert(new Q.Enemy({ x: 600, y: 2000 + moveY})); //left
-    stage.insert(new Q.Enemy({ x: 700, y: 2000 + moveY})); //left
-    stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY})); //top
-    stage.insert(new Q.Enemy({ x: 300, y: 300 + moveY})); //top
-    stage.insert(new Q.Enemy({ x: 2000, y: 300 + moveY})); //top
+    enemyOne = stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
+   // stage.insert(new Q.Enemy({ x: 1350, y: 2000 + moveY})); //bottom 
+    //stage.insert(new Q.Enemy({ x: 2000, y: 1200 + moveY})); //right
+   // stage.insert(new Q.Enemy({ x: 500, y: 2000 + moveY})); //left
+   // stage.insert(new Q.Enemy({ x: 600, y: 2000 + moveY})); //left
+    //enemyTwo = stage.insert(new Q.Enemy({ x: 700, y: 2000 + moveY})); //left
+   // stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY})); //top
+   // stage.insert(new Q.Enemy({ x: 300, y: 300 + moveY})); //top
+   // stage.insert(new Q.Enemy({ x: 2000, y: 300 + moveY})); //top
    
     //Set viewport to follow player
     stage.add("viewport").follow(currentPlayer);
@@ -2364,8 +2605,10 @@ function playerColor(colorInt) {
       }
 
       if(Q("Enemy").length == 0 && !Q.stage(1)) { 
+        level2IsRunning = false;
         Q.stageScene("endGame",1, { label: "You Win!" }); 
       } else if(Q("Player").length == 0 && !Q.stage(1)) { 
+        level2IsRunning = false;
         Q.stageScene("endGame",1, { label: "You Lose!" }); 
       }
     });

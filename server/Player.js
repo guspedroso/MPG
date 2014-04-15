@@ -1,8 +1,8 @@
-var Player = function(startX, startY, idNew, type) {
+var Player = function(startX, startY, idNew) {
   var x = startX;
   var y = startY;
-	var t = type;
   var id = idNew;
+  var color;
   var special;
   var health = 10;
 
@@ -13,13 +13,13 @@ var Player = function(startX, startY, idNew, type) {
   function getY() {
     return y;
   };
-	
-  function getT() {
-    return t;
-  };
   
   function getID() {
     return id;
+  };
+  
+  function getColor() {
+    return color;
   };
 
   function getHealth() {
@@ -46,19 +46,23 @@ var Player = function(startX, startY, idNew, type) {
     special = specialSpec;
   };
 
+  function setColor(col) {
+    color = col;
+  };
+  
   return {
     getX: getX,
     getY: getY,
-		getT: getT,
     getID: getID,
+    getColor: getColor,
     getHealth: getHealth,
     getSpecial: getSpecial,
     setX: setX,
     setY: setY,
     setHealth: setHealth,
     setSpecial: setSpecial,
-    id: id,
-		t: t
+    setColor: setColor,
+    id: id
   }
 
 };
