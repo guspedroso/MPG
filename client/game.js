@@ -1076,13 +1076,7 @@ function loadCoOp() {
       {
         this.p.life--;
         if (this.p.life == 0) 
-        {
-          totalEnemiesKilled++;
-          if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
-            this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
-          }
-          //this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
-          
+        { 
           //generate a random value to determine whether to drop a life or special
           var lifeOrSpecial = Math.floor((Math.random()*2)+1);
 
@@ -1112,11 +1106,6 @@ function loadCoOp() {
       }
       else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
       {
-        totalEnemiesKilled++;
-        if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
-          this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
-        }
-
         //generate a random value to determine whether to drop a life or special
         var lifeOrSpecial = Math.floor((Math.random()*2)+1);
 
@@ -2570,6 +2559,13 @@ function loadCoOp() {
     stage.insert(new Q.Tree2({ x: 2150, y: 1600 }));
     stage.insert(new Q.Tree1({ x: 2350, y: 1600 }));
     */
+
+    //insert the keys
+    stage.insert(new Q.Key({ x: 1300, y: 1350 + moveY})); //spawn room
+    stage.insert(new Q.Key({ x: 2100, y: 1250 + moveY})); //right room
+    stage.insert(new Q.Key({ x: 80, y: 2420 + moveY})); //left room
+    stage.insert(new Q.Key({ x: 1350, y: 2000 + moveY})); //bottom room
+    stage.insert(new Q.Key({ x: 100, y: 200 + moveY})); //top room
 
     //insert the doors
     stage.insert(new Q.horizontalDoor({ x: 1328, y: 880 + moveY}));
