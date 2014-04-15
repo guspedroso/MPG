@@ -386,15 +386,12 @@ function loadCoOp() {
   Q.SPRITE_OTHER_PLAYER = 131072;
 	//Q.SPRITE_OTHER_ENEMY = 262144;
 
-  var totalEnemiesKilled; //Keep track of enemies killed
-  var topDoor; //Declare variables for the doors, to remove them later
-  var bottomDoor;
-  var leftDoor;
-  var rightDoor;
-  var level2IsRunning = false; //So the functions execute properly
+  vvar totalEnemiesKilled; //Keep track of enemies killed
   var moveX = 0; //If we need to move all the entities on the board consistently
-  var moveY = 640;
+  var moveY = 1150;
   var totalKeys = 0; //Once the player has gotten all the keys, open the boss door
+  var bossDefeated = false;
+  var bossInserted = false;
   
 /////////////////// SPRITE VALUES AND OTHER SETTINGS ABOVE /////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,6 +455,59 @@ function loadCoOp() {
         Q.stageScene('hud', 3, objP);
         this.destroy();
         socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
+      }
+      else
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
+    }
+  });
+
+
+  //golden horizontal door object 
+  Q.Sprite.extend("goldenHorizontalDoor", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"goldenHorizontalDoor",
+        sprite:"goldenHorizontalDoor",
+        type: Q.SPRITE_DOOR,
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_OTHER_PLAYER
+      });
+      this.on("hit",this,"collision");
+    },
+
+    collision: function(col) {
+      var objP = col.obj.p;
+      if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && (totalKeys >= 1)) 
+      {
+        this.destroy();
+      }
+      else
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
+    }
+  });
+
+  //golden horizontal door object 
+  Q.Sprite.extend("bossDoor", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"bossDoor",
+        sprite:"bossDoor",
+        type: Q.SPRITE_DOOR,
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_OTHER_PLAYER
+      });
+      this.on("hit",this,"collision");
+    },
+
+    collision: function(col) {
+      var objP = col.obj.p;
+      if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && (bossDefeated)) 
+      {
+        this.destroy();
       }
       else
       {
@@ -743,6 +793,200 @@ function loadCoOp() {
 //////////////////////// ENTITIES AND ACTIONS ABOVE ////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////// ENEMY ////////////////////////////////////
+  //create the enemy object
+  Q.Sprite.extend("Boss", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"boss",
+        sprite:"boss",
+        life: 10, //change the life to something reasonable once we get things going
+        bulletSpeed: 600,
+        speed: 400,
+        direction: 'left',
+        switchPercent: 2,
+        type: Q.SPRITE_ENEMY,
+        canFire: true,
+        bulletInserted: false,
+        collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_EXPLOSION | Q.SPRITE_OTHER_PLAYER
+      });
+      this.add("2d, animation");
+      this.on("hit.sprite",this,"hit");
+      this.on("step",this,"step");
+      this.on('hit',this,"changeDirection");
+      this.on("step",this,"tryToFire");
+      //this.on("step",this,"animate")
+    },
+
+    animate: function() {
+      var p = this.p;
+      if (p.direction == "right") {
+        if (!p.canFire) {
+          this.play("enemy_fire_right_running");
+        }
+        else {
+          this.play("enemy_run_right")
+        }
+        
+      }
+      else if (p.direction == "left") {
+        if (!p.canFire) {
+          this.play("enemy_fire_left_running");
+        }
+        else {
+          this.play("enemy_run_left")
+        }
+      }
+      else if (p.direction == "up") {
+        if (!p.canFire) {
+          this.play("enemy_fire_back_running");
+        }
+        else {
+          this.play("enemy_run_back")
+        }
+      }
+      else if (p.direction == "down" && !p.canFire) {
+        if (!p.canFire) {
+          this.play("enemy_fire_front_running");
+        }
+        else {
+          this.play("enemy_run_front")
+        }
+      }
+    },
+
+    hit: function(col) {
+      var life;
+      if(col.obj.isA("PlayerBullet")) 
+      {
+        this.p.life--;
+      }
+      else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
+      {
+        this.p.life-=2;
+      }
+      else if(col.obj.isA("Player") || col.obj.isA("OtherPlayer"))
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
+      if (this.p.life <= 0) 
+      {
+        this.destroy();
+      }
+    },
+
+    fire: function() {
+      var p = this.p;
+      var angle, x, y;
+      if (!p.canFire)
+        return;
+      p.canFire = false;
+      //See what direction the player is in and set the bullet to go that way
+      if (p.direction == "left") {
+        angle = -90;
+        x = this.p.x - 47;
+        y = this.p.y + 2;
+      } else if (p.direction == "right") {
+        angle = 90;
+        x = this.p.x + 47;
+        y = this.p.y + 2;
+      } else if (p.direction == "up") {
+        angle = 0;
+        x = this.p.x - 8;
+        y = this.p.y - 60;
+      } else if (p.direction == "down") {
+        angle = 180;
+        x = this.p.x + 10;
+        y = this.p.y + 60;
+      }
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+      p.bulletInserted = true;
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.EnemyBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
+      setTimeout(function() { p.bulletInserted = false}, 80);
+      setTimeout(function() { p.canFire = true}, 900);
+    },
+
+    step: function(dt) {
+      var p = this.p;
+
+      // Randomly try to switch directions
+      if(Math.random() < p.switchPercent / 100) {
+        this.tryDirection();
+      }
+
+      // Add velocity in the direction we are currently heading.
+      switch(p.direction) {
+        case "left": p.vx = -p.speed; break;
+        case "right":p.vx = p.speed; break;
+        case "up":   p.vy = -p.speed; break;
+        case "down": p.vy = p.speed; break;
+      }
+    },
+
+    // Try a random direction 90 degrees away from the 
+    // current direction of movement
+    tryDirection: function() {
+      var p = this.p; 
+      var from = p.direction;
+      if(p.vy != 0 && p.vx == 0) {
+        p.direction = Math.random() < 0.5 ? 'left' : 'right';
+      } else if(p.vx != 0 && p.vy == 0) {
+        p.direction = Math.random() < 0.5 ? 'up' : 'down';
+      }
+    },
+
+    // Called every collision, if we're stuck,
+    // try moving in a direction 90 away from the normal
+    changeDirection: function(col) {
+      var p = this.p;
+      if(col.obj.isA("Player") || col.obj.isA("OtherPlayer"))
+      {
+        return;
+      }
+        
+      if(p.vx == 0 && p.vy == 0) {
+        if(col.normalY) {
+          p.direction = Math.random() < 0.5 ? 'left' : 'right';
+        } else if(col.normalX) {
+          p.direction = Math.random() < 0.5 ? 'up' : 'down';
+        }
+      }
+    },
+
+    tryToFire: function() {
+      var p = this.p;
+      var player = Q("Player").first();
+      var otherPlayer = Q("OtherPlayer").first();
+     
+      if(!player)
+        return;
+      if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y < p.y && !player.p.invisible)) {
+        p.direction = "up";
+        this.fire();
+      }
+      else if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y > p.y && !player.p.invisible)) {
+        p.direction = "down";
+        this.fire();
+      }
+      else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x < p.x && !player.p.invisible)) {
+        p.direction = "left";
+        this.fire();
+      }
+      else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x > p.x && !player.p.invisible)) {
+        p.direction = "right";
+        this.fire();
+      }
+      
+    },
+  });
 
   //Set up the animations for the enemy, reading frames from enemy in sprites.png
   Q.animations("enemy", {
@@ -2306,16 +2550,17 @@ function loadCoOp() {
 
   //Second level
   Q.scene("level2",function(stage) {
-    //variables to keep track of enemies killed and to let the certain functions
-    //know that level2 is running.
     totalEnemiesKilled = 0;
-    level2IsRunning = true;
+    totalKeys = 0;
+    bossDefeated = false;
+    bossInserted = false;
 
     //insert the collision layer and background layer
     stage.insert(new Q.TileLayer({ dataAsset: 'level2Background.json', sheet: 'tiles', type: Q.SPRITE_NONE }));
     stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level2Collision.json', sheet: 'tiles', type: Q.SPRITE_TILES }));
     
     //insert the trees
+    /*
     stage.insert(new Q.Tree1({ x: 200, y: 100 })); //top left
     stage.insert(new Q.Tree2({ x: 150, y: 200 })); //top left
     stage.insert(new Q.Tree1({ x: 150, y: 550 }));
@@ -2324,12 +2569,14 @@ function loadCoOp() {
     stage.insert(new Q.Tree1({ x: 2050, y: 1600 }));
     stage.insert(new Q.Tree2({ x: 2150, y: 1600 }));
     stage.insert(new Q.Tree1({ x: 2350, y: 1600 }));
+    */
 
     //insert the doors
-    topDoor = stage.insert(new Q.horizontalDoor({ x: 1328, y: 880 + moveY}));
-    bottomDoor = stage.insert(new Q.horizontalDoor({ x: 1328, y: 1647 + moveY}));
-    leftDoor = stage.insert(new Q.verticalDoor({ x: 816, y: 1264 + moveY}));
-    rightDoor = stage.insert(new Q.verticalDoor({ x: 1840, y: 1264 + moveY}));
+    stage.insert(new Q.horizontalDoor({ x: 1328, y: 880 + moveY}));
+    stage.insert(new Q.horizontalDoor({ x: 1328, y: 1647 + moveY}));
+    stage.insert(new Q.verticalDoor({ x: 816, y: 1264 + moveY}));
+    stage.insert(new Q.verticalDoor({ x: 1840, y: 1264 + moveY}));
+    stage.insert(new Q.goldenHorizontalDoor({ x: 1136, y: 300 + moveY}));
     
     //insert the player
     currentPlayer = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
@@ -2351,15 +2598,20 @@ function loadCoOp() {
 
     //When the enemies have been defeated display label
     stage.on("step",function() {
-          if(Q("Enemy").length == 0 && !Q.stage(1)) { 
-            level2IsRunning = false;
-            Q.stageScene("endGame",1, { label: "You Win!" }); 
-          } else if(Q("Player").length == 0 && !Q.stage(1)) { 
-            level2IsRunning = false;
-            Q.stageScene("endGame",1, { label: "You Lose!" }); 
-          }
-        });
+      if ((currentPlayer.p.x > 1000)  && (currentPlayer.p.x < 1300) && (currentPlayer.p.y < 190 + moveY) && !bossInserted) {
+        stage.insert(new Q.Boss({ x: 1300, y: -300 + moveY}));
+        stage.insert(new Q.bossDoor({ x: 1136, y: 300 + moveY}));
+        bossInserted = true;
+      }
 
+      if(Q("Enemy").length == 0 && !Q.stage(1)) { 
+        level2IsRunning = false;
+        Q.stageScene("endGame",1, { label: "You Win!" }); 
+      } else if(Q("Player").length == 0 && !Q.stage(1)) { 
+        level2IsRunning = false;
+        Q.stageScene("endGame",1, { label: "You Lose!" }); 
+      }
+    });
   });
 
   //Scene that occurs after game ends
