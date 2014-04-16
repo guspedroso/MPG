@@ -21,6 +21,10 @@ var currentPlayer;
 //All the other players
 var allPlayers;
 
+var enemyOne;
+//All the other enemies
+var allEnemies;
+
 init();
 
 // This function initializes the socket connection, sets event handlers
@@ -28,6 +32,7 @@ function init(){
 	socket = io.connect('http://' + document.location.host, { port: 80, 
     transports: ["websocket"]});
 	allPlayers = [];
+	allEnemies = [];
 	setEventHandlers();
 };
 
@@ -38,8 +43,10 @@ function setEventHandlers() {
 	socket.on('new player', addNewPlayer);
 	socket.on('move player', movePlayer);
 	socket.on('remove player', removePlayer);
-	socket.on('new enemy', newEnemy);
+	socket.on('new enemy', addNewEnemy);
+	socket.on('move enemy', moveEnemy);
   socket.on('fire bullet', drawFriendlyBullet);
+	socket.on('fire bullet enemy', drawEnemyBullet);
   socket.on('door open', doorOpen);
   socket.on('client color', clientColor);
 };
@@ -57,6 +64,10 @@ function socketDisconnect(data) {
   var playerDel = findPlayer(data.pid);
   console.log(playerDel.p.pid);
   playerDel.destroy();
+	
+	var firstEnemy = findEnemy(data.pid);
+	allEnemies.splice(allEnemies.indexOf(firstEnemy), 1);
+	firstEnemy.destroy();
 };
 
 /* 
@@ -84,7 +95,7 @@ function movePlayer(data) {
 	var playerMove = findPlayer(data.pid);
 	//change his coordinates  
   playerMove.set({x: data.px, y: data.py});
-  console.log(data.px + " " + data.py);
+  //console.log(data.px + " " + data.py);
   playerMove.animate(data.po, "false");
 };
 
@@ -97,17 +108,41 @@ function removePlayer(data) {
   playerDel.destroy();
 };
 
-function newEnemy(data) {
-	console.log(data);
+function addNewEnemy(data) {
+  /*
+	//console.log(data);
 	console.log("Enemy Added");
+	var newEnemy = new Q.OtherEnemy1({ x: data.x, y: data.y, pid: data.pid, t: data.t }); //change to Q.OtherEnemy1 for testing
+  console.log("new enemy " + data.pid + " " + data.x + " " + data.y);
+
+  Q.stage().insert(newEnemy);
+
+	allEnemies.push(newEnemy);
+	
+	console.log(allEnemies.length);
+  */
 };
 
 function moveEnemy(data) {
+	//console.log(data);
+	var enemyMove = findEnemy(data.pid);
+	//change his coordinates
+	// playerMove.setX(data.x);
+	// playerMove.setY(data.y);
 
+ // var playerMove2 = Q.stage().locate(data.pxs, data.pys, Q.SPRITE_PLAYER);
+	if(enemyMove){
+   console.log(data.pid + " " + data.px + " " + data.py);
+  enemyMove.set({x: data.px, y: data.py});
+ 
+  enemyMove.animate(data.po, "false");
+	}
+	
 };
 
 function removeEnemy(data) {
-
+  var enemyDel = findEnemy(data.pid);
+	enemyDel.destroy();
 };
 
 /*
@@ -121,7 +156,9 @@ function drawFriendlyBullet(data) {
 };
 
 function drawEnemyBullet(data) {
-
+  var enemyFire = findEnemy(data.pid);
+  enemyFire.animate(data.po, "true");
+  enemyFire.fire(data.po);
 };
 
 /*
@@ -145,6 +182,16 @@ function findPlayer(id) {
   for (var i = 0; i < allPlayers.length; i++) {
     if (allPlayers[i].p.pid == id) {
       return allPlayers[i];
+    };
+  };
+};
+
+function findEnemy(id) {
+  for (var i = 0; i < allEnemies.length; i++) {
+		console.log(allEnemies[i].p.pid);
+    if (allEnemies[i].p.pid == id) {
+			console.log(allEnemies[i]);
+      return allEnemies[i];
     };
   };
 };
@@ -177,6 +224,11 @@ function loadCoOp() {
   //sends new player request to server
   console.log(px + " " + py);
   socket.emit('new player', { x: px, y: py });
+	
+	var e1x = enemyOne.p.x;
+	var e1y = enemyOne.p.y;
+	console.log("Enemy: " + e1x + " " + e1y);
+	socket.emit('new enemy', { x: e1x, y: e1y, t: "enemy"});
 };
 
 /*
@@ -429,6 +481,34 @@ function playerColor(colorInt) {
       var objP = col.obj.p;
       if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && (totalKeys >= 1)) 
       {
+        this.destroy();
+        socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
+      }
+      else
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
+    }
+  });
+
+  //golden horizontal door object 
+  Q.Sprite.extend("blueHorizontalDoor", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"blueHorizontalDoor",
+        sprite:"blueHorizontalDoor",
+        type: Q.SPRITE_DOOR,
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_OTHER_PLAYER
+      });
+      this.on("hit",this,"collision");
+    },
+
+    collision: function(col) {
+      var objP = col.obj.p;
+      if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && objP.hasBlueKey) 
+      {
+        objP.hasBlueKey = false;
         this.destroy();
         socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
       }
@@ -737,6 +817,49 @@ function playerColor(colorInt) {
     }
   });
 
+  //blueKey object
+  Q.Sprite.extend("blueKey", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"blueKey",
+        sprite:"blueKey",
+        type: Q.SPRITE_KEY,
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_OTHER_PLAYER
+      });
+      this.add("2d");
+      this.on("hit.sprite",this,"collision");
+    },
+
+    //If the life collides with a player, destroy it, keep it on map otherwise
+    collision: function(col) {
+      var objP = col.obj.p;
+      if ((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
+        this.destroy();
+      }
+    }
+  });
+
+  //goldenKey object
+  Q.Sprite.extend("goldenKey", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"goldenKey",
+        sprite:"goldenKey",
+        type: Q.SPRITE_KEY,
+        collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_OTHER_PLAYER
+      });
+      this.add("2d");
+      this.on("hit.sprite",this,"collision");
+    },
+
+    //If the life collides with a player, destroy it, keep it on map otherwise
+    collision: function(col) {
+      var objP = col.obj.p;
+      if ((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
+        this.destroy();
+      }
+    }
+  });
 ///////////////////////// AMMUNITION AND DROPS ABOVE ///////////////////////////
 
 //////////////////////// ENTITIES AND ACTIONS ABOVE ////////////////////////////
@@ -1202,6 +1325,195 @@ function playerColor(colorInt) {
       
     },
   });
+	
+	Q.Sprite.extend("OtherEnemy1", {
+    init: function(p) {
+		
+      this._super(p,{
+        sheet:"enemy",
+        sprite:"enemy",
+				type: Q.SPRITE_ENEMY,
+        life: 5, //change the life to something reasonable once we get things going
+        bulletSpeed: 300,
+        speed: 100,
+        direction: 'left',
+        switchPercent: 2,
+        //type: Q.SPRITE_ENEMY,
+        canFire: true,
+        bulletInserted: false,
+        collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_EXPLOSION | Q.SPRITE_OTHER_PLAYER
+      });
+      this.add("2d, animation");
+      //this.on("hit.sprite",this,"hit");
+      this.on("step",this,"animate");
+      //this.on('hit',this,"changeDirection");
+      //this.on("step",this,"tryToFire");
+      //this.on("step",this,"animate")
+    },
+
+    animate: function(po, pf) {
+       if(po == "right") {
+        //set the direction of the player depending on the input
+        this.p.direction = "right";
+
+        //play the fire animation if input reads that the player is firing,
+        //else just play the running animation
+        if (pf == "true") {
+          this.play("enemy_fire_right_running");
+        }
+         else {
+            this.play("enemy_run_right");
+        }
+      } else if (po == "left") {
+        this.p.direction = "left";
+        if (pf == "true") {
+          this.play("enemy_fire_left_running")
+        }
+        else {
+          this.play("enemy_run_left");
+        }
+      }
+      else if (po == "up") {
+        this.p.direction = "up";
+        if (pf == "true") {
+          this.play("enemy_fire_back_running")
+        }
+        else {
+          this.play("enemy_run_back");
+        }
+      } else if (po == "down") {
+        this.p.direction = "down";
+        if (pf == "true") {
+          this.play("enemy_fire_front_running")
+        }
+        else {
+          this.play("enemy_run_front");
+        }
+      }
+    },
+
+   /* hit: function(col) {
+      var life;
+      if(col.obj.isA("PlayerBullet")) 
+      {
+        this.p.life--;
+        if (this.p.life == 0) 
+        {
+          totalEnemiesKilled++;
+          if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
+            this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
+          }
+          //this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
+          
+          //generate a random value to determine whether to drop a life or special
+          var lifeOrSpecial = Math.floor((Math.random()*2)+1);
+
+          if (lifeOrSpecial == 1) 
+          {
+            life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
+            setTimeout(function(){life.destroy()},10000);
+          }
+          else if (lifeOrSpecial == 2)
+          {
+            var oneOfTheSpecials = Math.floor((Math.random()*4)+1);
+            switch(oneOfTheSpecials)
+            {
+              case 1: this.stage.insert(new Q.SpecialGun({ x: this.p.x, y: this.p.y }));
+                break;
+              case 2: this.stage.insert(new Q.SpecialSpeed({ x: this.p.x, y: this.p.y }));
+                break;
+              case 3: this.stage.insert(new Q.SpecialInvincibility({ x: this.p.x, y: this.p.y }));
+                break;
+              case 4: this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
+                break;
+            }
+          }
+        
+          this.destroy();
+        }
+      }
+      else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
+      {
+        totalEnemiesKilled++;
+        if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
+          this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
+        }
+
+        //generate a random value to determine whether to drop a life or special
+        var lifeOrSpecial = Math.floor((Math.random()*2)+1);
+
+        if (lifeOrSpecial == 1) 
+        {
+          life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
+          setTimeout(function(){life.destroy()},10000);
+        }
+        else
+        {
+          var oneOfTheSpecials = Math.floor((Math.random()*4)+1);
+          switch(oneOfTheSpecials)
+          {
+            case 1: this.stage.insert(new Q.SpecialGun({ x: this.p.x, y: this.p.y }));
+              break;
+            case 2: this.stage.insert(new Q.SpecialSpeed({ x: this.p.x, y: this.p.y }));
+              break;
+            case 3: this.stage.insert(new Q.SpecialInvincibility({ x: this.p.x, y: this.p.y }));
+              break;
+            case 4: this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
+              break;
+          }
+        }
+        
+        this.destroy();
+      }
+      else if(col.obj.isA("Player") || col.obj.isA("OtherPlayer1"))
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
+    },*/
+
+    fire: function(po) {
+      var p = this.p;
+      var angle, x, y;
+      //if (!p.canFire)
+      //  return;
+    //  p.canFire = false;
+      //See what direction the player is in and set the bullet to go that way
+      if (po == "left") {
+        angle = -90;
+        x = this.p.x - 47;
+        y = this.p.y + 2;
+      } else if (po == "right") {
+        angle = 90;
+        x = this.p.x + 47;
+        y = this.p.y + 2;
+      } else if (po == "up") {
+        angle = 0;
+        x = this.p.x - 8;
+        y = this.p.y - 60;
+      } else if (po == "down") {
+        angle = 180;
+        x = this.p.x + 10;
+        y = this.p.y + 60;
+      }
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+     // p.bulletInserted = true;
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.EnemyBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
+      //setTimeout(function() { p.bulletInserted = false}, 80);
+     // setTimeout(function() { p.canFire = true}, 900);
+    },
+		
+    // Try a random direction 90 degrees away from the 
+    // current direction of movement
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// PLAYER CLASSES /////////////////////////////////
@@ -1320,6 +1632,8 @@ function playerColor(colorInt) {
         specialSpeedCount: 0,
         keys: 0,
         canFire: true,
+        hasGoldenKey: false,
+        hasBlueKey: false,
         beenHit: false,
         invisible: false,
         enemiesKilled: 0,
@@ -1351,6 +1665,14 @@ function playerColor(colorInt) {
       else if (col.obj.isA("Key")) {
         p.keys++;
         totalKeys++;
+        Q.stageScene('hud', 3, p);
+      }
+      else if (col.obj.isA("goldenKey")) {
+        p.hasGoldenKey = true;
+        Q.stageScene('hud', 3, p);
+      }
+      else if (col.obj.isA("blueKey")) {
+        p.hasBlueKey = true;
         Q.stageScene('hud', 3, p);
       }
       else if(col.obj.isA("SpecialSpeed")) {
@@ -2176,6 +2498,10 @@ function playerColor(colorInt) {
   //First level
   Q.scene("level1",function(stage) {
     totalEnemiesKilled = 0;
+    totalKeys = 0;
+    bossDefeated = false;
+    bossInserted = false;
+
     stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level1Collision.json', sheet: 'tiles', type: Q.SPRITE_TILES }));
     stage.insert(new Q.TileLayer({ dataAsset: 'level1Background.json', sheet: 'tiles', type: Q.SPRITE_NONE }));
 
@@ -2232,31 +2558,54 @@ function playerColor(colorInt) {
     //insert the doors
     stage.insert(new Q.horizontalDoor({ x: 1328, y: 880 + moveY}));
     stage.insert(new Q.horizontalDoor({ x: 1328, y: 1647 + moveY}));
-    stage.insert(new Q.verticalDoor({ x: 816, y: 1264 + moveY}));
-    stage.insert(new Q.verticalDoor({ x: 1840, y: 1264 + moveY}));
+    stage.insert(new Q.verticalDoor({ x: 816, y: 1266 + moveY}));
+    stage.insert(new Q.verticalDoor({ x: 1840, y: 1266 + moveY}));
     stage.insert(new Q.goldenHorizontalDoor({ x: 1136, y: 300 + moveY}));
-    
+    stage.insert(new Q.blueHorizontalDoor({ x: 3120, y: 1137 + moveY}));
+    stage.insert(new Q.blueHorizontalDoor({ x: 4464, y: 1137 + moveY}));
+
     //insert the keys
     stage.insert(new Q.Key({ x: 1300, y: 1350 + moveY})); //spawn room
-    stage.insert(new Q.Key({ x: 2100, y: 1250 + moveY})); //right room
+    stage.insert(new Q.SpecialSpeed({ x: 1350, y: 1350 + moveY})); //spawn room
+    stage.insert(new Q.SpecialSpeed({ x: 1550, y: 1350 + moveY})); //spawn room
+    stage.insert(new Q.SpecialSpeed({ x: 1600, y: 1350 + moveY})); //spawn room
+    stage.insert(new Q.blueKey({ x: 1450, y: 1350 + moveY})); //spawn room
+    stage.insert(new Q.blueKey({ x: 4464, y: 900 + moveY})); //spawn room
+    stage.insert(new Q.goldenKey({ x: 1400, y: 1350 + moveY})); //spawn room
+    stage.insert(new Q.Key({ x: 2400, y: 1250 + moveY})); //right room
     stage.insert(new Q.Key({ x: 80, y: 2420 + moveY})); //left room
     stage.insert(new Q.Key({ x: 1350, y: 2000 + moveY})); //bottom room
     stage.insert(new Q.Key({ x: 100, y: 200 + moveY})); //top room
+
+    //insert golden key and specials 
+    stage.insert(new Q.goldenKey({ x: 150, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialSpeed({ x: 400, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialGun({ x: 500, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialInvincibility({ x: 600, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialGun({ x: 700, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialInvincibility({ x: 800, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialGun({ x: 900, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialInvincibility({ x: 1000, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialGun({ x: 1100, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialInvincibility({ x: 1200, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialSpeed({ x: 1300, y: 2670 + moveY}));
+    stage.insert(new Q.SpecialSpeed({ x: 1400, y: 2670 + moveY}));
+    
 
     //insert the player
     currentPlayer = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
     
     //insert the enemies
     // stage.insert(new Q.Enemy({ x: 1800, y: 1500 + moveY})); // spawn room
-    stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
-    stage.insert(new Q.Enemy({ x: 1350, y: 2000 + moveY})); //bottom 
-    stage.insert(new Q.Enemy({ x: 2000, y: 1200 + moveY})); //right
-    stage.insert(new Q.Enemy({ x: 500, y: 2000 + moveY})); //left
-    stage.insert(new Q.Enemy({ x: 600, y: 2000 + moveY})); //left
-    stage.insert(new Q.Enemy({ x: 700, y: 2000 + moveY})); //left
-    stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY})); //top
-    stage.insert(new Q.Enemy({ x: 300, y: 300 + moveY})); //top
-    stage.insert(new Q.Enemy({ x: 2000, y: 300 + moveY})); //top
+    //enemyOne = stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
+   // stage.insert(new Q.Enemy({ x: 1350, y: 2000 + moveY})); //bottom 
+    //stage.insert(new Q.Enemy({ x: 2000, y: 1200 + moveY})); //right
+   // stage.insert(new Q.Enemy({ x: 500, y: 2000 + moveY})); //left
+   // stage.insert(new Q.Enemy({ x: 600, y: 2000 + moveY})); //left
+    //enemyTwo = stage.insert(new Q.Enemy({ x: 700, y: 2000 + moveY})); //left
+   // stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY})); //top
+   // stage.insert(new Q.Enemy({ x: 300, y: 300 + moveY})); //top
+   // stage.insert(new Q.Enemy({ x: 2000, y: 300 + moveY})); //top
    
     //Set viewport to follow player
     stage.add("viewport").follow(currentPlayer);
@@ -2269,7 +2618,7 @@ function playerColor(colorInt) {
         bossInserted = true;
       }
 
-      if(Q("Enemy").length == 0 && !Q.stage(1)) { 
+      if(Q("Boss").length == 0 && !Q.stage(1) && bossDefeated) { 
         Q.stageScene("endGame",1, { label: "You Win!" }); 
       } else if(Q("Player").length == 0 && !Q.stage(1)) { 
         Q.stageScene("endGame",1, { label: "You Lose!" }); 
