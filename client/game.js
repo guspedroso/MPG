@@ -43,10 +43,11 @@ function setEventHandlers() {
 	socket.on('new player', addNewPlayer);
 	socket.on('move player', movePlayer);
 	socket.on('remove player', removePlayer);
+	socket.on('remove enemy', removeEnemy);
 	socket.on('new enemy', addNewEnemy);
 	socket.on('move enemy', moveEnemy);
   socket.on('fire bullet', drawFriendlyBullet);
-	socket.on('fire bullet enemy', drawEnemyBullet);
+	socket.on('fire enemy bullet', drawEnemyBullet);
   socket.on('door open', doorOpen);
   socket.on('client color', clientColor);
 };
@@ -62,7 +63,7 @@ function socketConnect() {
 function socketDisconnect(data) {
   console.log("Disconnect from the socket server.");
   var playerDel = findPlayer(data.pid);
-  console.log(playerDel.p.pid);
+  //console.log(playerDel.p.pid);
   playerDel.destroy();
 	
 	var firstEnemy = findEnemy(data.pid);
@@ -109,22 +110,20 @@ function removePlayer(data) {
 };
 
 function addNewEnemy(data) {
-  /*
-	//console.log(data);
+	console.log(data.x, data.y, data.pid);
 	console.log("Enemy Added");
-	var newEnemy = new Q.OtherEnemy1({ x: data.x, y: data.y, pid: data.pid, t: data.t }); //change to Q.OtherEnemy1 for testing
-  console.log("new enemy " + data.pid + " " + data.x + " " + data.y);
+	var newEnemy = new Q.OtherEnemy1({ x: data.x, y: data.y, pid: data.pid}); //change to Q.OtherEnemy1 for testing
+  //console.log("new enemy " + data.pid + " " + data.x + " " + data.y);
 
   Q.stage().insert(newEnemy);
 
 	allEnemies.push(newEnemy);
 	
 	console.log(allEnemies.length);
-  */
 };
 
 function moveEnemy(data) {
-	//console.log(data);
+	console.log("MOVEMENT DATA ", data);
 	var enemyMove = findEnemy(data.pid);
 	//change his coordinates
 	// playerMove.setX(data.x);
@@ -132,7 +131,7 @@ function moveEnemy(data) {
 
  // var playerMove2 = Q.stage().locate(data.pxs, data.pys, Q.SPRITE_PLAYER);
 	if(enemyMove){
-   console.log(data.pid + " " + data.px + " " + data.py);
+   //console.log(data.pid + " " + data.px + " " + data.py);
   enemyMove.set({x: data.px, y: data.py});
  
   enemyMove.animate(data.po, "false");
@@ -180,6 +179,7 @@ function clientColor(data) {
  */ 
 function findPlayer(id) {
   for (var i = 0; i < allPlayers.length; i++) {
+
     if (allPlayers[i].p.pid == id) {
       return allPlayers[i];
     };
@@ -187,13 +187,15 @@ function findPlayer(id) {
 };
 
 function findEnemy(id) {
+	//console.log(id);
   for (var i = 0; i < allEnemies.length; i++) {
-		console.log(allEnemies[i].p.pid);
+
     if (allEnemies[i].p.pid == id) {
-			console.log(allEnemies[i]);
+			
       return allEnemies[i];
     };
   };
+
 };
 
 
@@ -479,8 +481,9 @@ function playerColor(colorInt) {
 
     collision: function(col) {
       var objP = col.obj.p;
-      if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && (totalKeys >= 1)) 
+      if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && objP.hasGoldenKey) 
       {
+        objP.hasGoldenKey = false;
         this.destroy();
         socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
       }
@@ -492,7 +495,7 @@ function playerColor(colorInt) {
     }
   });
 
-  //golden horizontal door object 
+  //blue horizontal door object 
   Q.Sprite.extend("blueHorizontalDoor", {
     init: function(p) {
       this._super(p,{
@@ -510,7 +513,6 @@ function playerColor(colorInt) {
       {
         objP.hasBlueKey = false;
         this.destroy();
-        socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
       }
       else
       {
@@ -943,6 +945,7 @@ function playerColor(colorInt) {
       }
       if (this.p.life <= 0) 
       {
+        bossDefeated = true;
         this.destroy();
       }
     },
@@ -1173,8 +1176,9 @@ function playerColor(colorInt) {
                 break;
             }
           }
-        
+					socket.emit('enemy death');
           this.destroy();
+					
         }
       }
       else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
@@ -1224,18 +1228,22 @@ function playerColor(colorInt) {
         angle = -90;
         x = this.p.x - 47;
         y = this.p.y + 2;
+				
       } else if (p.direction == "right") {
         angle = 90;
         x = this.p.x + 47;
         y = this.p.y + 2;
+				
       } else if (p.direction == "up") {
         angle = 0;
         x = this.p.x - 8;
         y = this.p.y - 60;
+				
       } else if (p.direction == "down") {
         angle = 180;
         x = this.p.x + 10;
         y = this.p.y + 60;
+				
       }
       var dx =  Math.sin(angle * Math.PI / 180),
           dy = -Math.cos(angle * Math.PI / 180);
@@ -1248,6 +1256,19 @@ function playerColor(colorInt) {
                        vy: dy * p.bulletSpeed
                 })
       );
+			if (p.direction == "left") {
+				socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "left" });
+				
+      } else if (p.direction == "right") {
+				socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "right" });
+				
+      } else if (p.direction == "up") {
+				socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "up" });
+				
+      } else if (p.direction == "down") {
+				socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "down" });
+				
+      }
       setTimeout(function() { p.bulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 900);
     },
@@ -1267,6 +1288,8 @@ function playerColor(colorInt) {
         case "up":   p.vy = -p.speed; break;
         case "down": p.vy = p.speed; break;
       }
+			
+			socket.emit('move enemy', { x: p.x, y: p.y, o: p.direction });
     },
 
     // Try a random direction 90 degrees away from the 
@@ -1304,23 +1327,48 @@ function playerColor(colorInt) {
       var player = Q("Player").first();
       var otherPlayer = Q("OtherPlayer1").first();
      
-      if(!player)
+      if(!player && !otherPlayer)
         return;
       if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y < p.y && !player.p.invisible)) {
         p.direction = "up";
         this.fire();
+				//socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "up" });
       }
       else if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y > p.y && !player.p.invisible)) {
         p.direction = "down";
         this.fire();
+				//socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "down" });
       }
       else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x < p.x && !player.p.invisible)) {
         p.direction = "left";
         this.fire();
+				//socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "left" });
       }
       else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x > p.x && !player.p.invisible)) {
         p.direction = "right";
         this.fire();
+			//	socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "right" });
+      }
+			
+			if ((otherPlayer.p.x + otherPlayer.p.w > p.x && otherPlayer.p.x - otherPlayer.p.w < p.x && otherPlayer.p.y < p.y && !otherPlayer.p.invisible)) {
+        p.direction = "up";
+        this.fire();
+				//socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "up" });
+      }
+      else if ((otherPlayer.p.x + otherPlayer.p.w > p.x && otherPlayer.p.x - otherPlayer.p.w < p.x && otherPlayer.p.y > p.y && !otherPlayer.p.invisible)) {
+        p.direction = "down";
+        this.fire();
+				//socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "down" });
+      }
+      else if ((otherPlayer.p.y + otherPlayer.p.w > p.y && otherPlayer.p.y - otherPlayer.p.w < p.y && otherPlayer.p.x < p.x && !otherPlayer.p.invisible)) {
+        p.direction = "left";
+        this.fire();
+				//socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "left" });
+      }
+      else if ((otherPlayer.p.y + otherPlayer.p.w > p.y && otherPlayer.p.y - otherPlayer.p.w < p.y && otherPlayer.p.x > p.x && !otherPlayer.p.invisible)) {
+        p.direction = "right";
+        this.fire();
+			//	socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "right" });
       }
       
     },
@@ -1632,9 +1680,9 @@ function playerColor(colorInt) {
         specialSpeedCount: 0,
         keys: 0,
         canFire: true,
+        beenHit: false,
         hasGoldenKey: false,
         hasBlueKey: false,
-        beenHit: false,
         invisible: false,
         enemiesKilled: 0,
         specialBullets: 0,
@@ -1715,7 +1763,7 @@ function playerColor(colorInt) {
           }
         }, 10000);
       }
-      else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet")) && !p.beenHit) {
+      else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet") || col.obj.isA("OtherEnemy1")) && !p.beenHit) {
         p.beenHit = true;
         p.life--;
         red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: Q.SPRITE_RED }));
@@ -2498,10 +2546,6 @@ function playerColor(colorInt) {
   //First level
   Q.scene("level1",function(stage) {
     totalEnemiesKilled = 0;
-    totalKeys = 0;
-    bossDefeated = false;
-    bossInserted = false;
-
     stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level1Collision.json', sheet: 'tiles', type: Q.SPRITE_TILES }));
     stage.insert(new Q.TileLayer({ dataAsset: 'level1Background.json', sheet: 'tiles', type: Q.SPRITE_NONE }));
 
@@ -2590,14 +2634,13 @@ function playerColor(colorInt) {
     stage.insert(new Q.SpecialInvincibility({ x: 1200, y: 2670 + moveY}));
     stage.insert(new Q.SpecialSpeed({ x: 1300, y: 2670 + moveY}));
     stage.insert(new Q.SpecialSpeed({ x: 1400, y: 2670 + moveY}));
-    
 
     //insert the player
     currentPlayer = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
     
     //insert the enemies
     // stage.insert(new Q.Enemy({ x: 1800, y: 1500 + moveY})); // spawn room
-    //enemyOne = stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
+    enemyOne = stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
    // stage.insert(new Q.Enemy({ x: 1350, y: 2000 + moveY})); //bottom 
     //stage.insert(new Q.Enemy({ x: 2000, y: 1200 + moveY})); //right
    // stage.insert(new Q.Enemy({ x: 500, y: 2000 + moveY})); //left
@@ -2620,7 +2663,7 @@ function playerColor(colorInt) {
 
       if(Q("Boss").length == 0 && !Q.stage(1) && bossDefeated) { 
         Q.stageScene("endGame",1, { label: "You Win!" }); 
-      } else if(Q("Player").length == 0 && !Q.stage(1)) { 
+      } else if(Q("Player").length == 0 && !Q.stage(1) && allPlayers.length == 0) { 
         Q.stageScene("endGame",1, { label: "You Lose!" }); 
       }
     });
