@@ -1850,11 +1850,11 @@ function playerColor(colorInt) {
     },
 
     fireLeft: function() {
-      if(audioOn){Q.audio.play('laser.mp3');}
       var p = this.p;
       var angle, x, y;
       if (!p.canFire)
         return;
+      if(audioOn){Q.audio.play('laser.mp3');}
       p.canFire = false;
       p.direction = "left";
       angle = -90;
@@ -1877,11 +1877,11 @@ function playerColor(colorInt) {
       setTimeout(function() { p.canFire = true}, 200);
     },
     fireRight: function() {
-      if(audioOn){Q.audio.play('laser.mp3');}
       var p = this.p;
       var angle, x, y;
       if (!p.canFire)
         return;
+      if(audioOn){Q.audio.play('laser.mp3');}
       p.canFire = false;
       p.direction = "right";
       angle = 90;
@@ -1904,13 +1904,12 @@ function playerColor(colorInt) {
       setTimeout(function() { p.canFire = true}, 200);
     },
     fireUp: function() {
-      if(audioOn){Q.audio.play('laser.mp3');}
       var p = this.p;
       var angle, x, y;
       if (!p.canFire)
         return;
+      if(audioOn){Q.audio.play('laser.mp3');}
       p.canFire = false;
-      
       p.direction = "up";
       angle = 0;
       x = this.p.x - 8;
@@ -1932,11 +1931,11 @@ function playerColor(colorInt) {
       setTimeout(function() { p.canFire = true}, 200);
     },
     fireDown: function() {
-      if(audioOn){Q.audio.play('laser.mp3');}
       var p = this.p;
       var angle, x, y;
       if (!p.canFire)
         return;
+      if(audioOn){Q.audio.play('laser.mp3');}
       p.canFire = false;
       p.direction = "down";
       angle = 180;
