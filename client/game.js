@@ -222,7 +222,7 @@ function loadGame() {
 function loadCoOp() {
   Q.clearStages();
   Q.stageScene('level2');
-  Q.stageScene('hud', 3, Q('Player').first().p);
+  Q.stageScene('hud',1, Q('Player').first().p);
   var px = currentPlayer.p.x;
   var py = currentPlayer.p.y;
   //sends new player request to server
@@ -397,6 +397,7 @@ function playerColor(colorInt) {
   var totalKeys = 0; //Once the player has gotten all the keys, open the boss door
   var bossDefeated = false;
   var bossInserted = false;
+  var soundOn = false;
   
 /////////////////// SPRITE VALUES AND OTHER SETTINGS ABOVE /////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,8 +458,8 @@ function playerColor(colorInt) {
       if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && (objP.keys > 0)) 
       {
         objP.keys--;
-        Q.stageScene('hud', 3, objP);
-        Q.audio.play("doorOpen.mp3");
+        Q.stageScene('hud',1, objP);
+        if(audioOn){Q.audio.play("doorOpen.mp3");}
         this.destroy();
       }
       else
@@ -486,7 +487,7 @@ function playerColor(colorInt) {
       if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && objP.hasGoldenKey) 
       {
         objP.hasGoldenKey = false;
-        Q.audio.play("doorOpen.mp3");
+        if(audioOn){Q.audio.play("doorOpen.mp3");}
         this.destroy();
       }
       else
@@ -514,7 +515,7 @@ function playerColor(colorInt) {
       if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && objP.hasBlueKey) 
       {
         objP.hasBlueKey = false;
-        Q.audio.play("doorOpen.mp3");
+        if(audioOn){Q.audio.play("doorOpen.mp3");}
         this.destroy();
       }
       else
@@ -541,7 +542,7 @@ function playerColor(colorInt) {
       var objP = col.obj.p;
       if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && (bossDefeated)) 
       {
-        Q.audio.play("doorOpen.mp3");
+        if(audioOn){Q.audio.play("doorOpen.mp3");}
         this.destroy();
       }
       else
@@ -569,8 +570,8 @@ function playerColor(colorInt) {
       if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && (objP.keys > 0)) 
       {
         objP.keys--;
-        Q.stageScene('hud', 3, objP);
-        Q.audio.play("doorOpen.mp3");
+        Q.stageScene('hud',1, objP);
+        if(audioOn){Q.audio.play("doorOpen.mp3");}
         this.destroy();
       }
       else
@@ -665,7 +666,7 @@ function playerColor(colorInt) {
     },
     //destroy the bullet if it hits anything
     collision: function(col) {
-      Q.audio.play('explosion.mp3');
+      if(audioOn){Q.audio.play('explosion.mp3');}
       this.stage.insert(new Q.Explosion({ x: this.p.x, y: this.p.y }));
       this.destroy();
     }
@@ -1717,38 +1718,41 @@ function playerColor(colorInt) {
       var p = this.p;
       if (col.obj.isA("Life")) {
         p.life++;
-        Q.stageScene('hud', 3, p);
+        Q.stageScene('hud',1, p);
       }
       else if (col.obj.isA("Key")) {
         p.keys++;
         totalKeys++;
-        Q.audio.play("key.mp3");
-        Q.stageScene('hud', 3, p);
+        if(audioOn){Q.audio.play("key.mp3");}
+        Q.stageScene('hud',1, p);
       }
       else if (col.obj.isA("goldenKey")) {
         p.hasGoldenKey = true;
-        Q.audio.play("key.mp3");
-        Q.stageScene('hud', 3, p);
+        if(audioOn){Q.audio.play("key.mp3");}
+        Q.stageScene('hud',1, p);
       }
       else if (col.obj.isA("blueKey")) {
         p.hasBlueKey = true;
-        Q.audio.play("key.mp3");
-        Q.stageScene('hud', 3, p);
+        if(audioOn){Q.audio.play("key.mp3");}
+        Q.stageScene('hud',1, p);
       }
       else if(col.obj.isA("SpecialSpeed")) {
         p.specialSpeedCount++;
         p.stepDelay = 0.05;
         p.bulletSpeed = 1300;
-        Q.audio.play("screamOfJoy.mp3");
+        if(audioOn){Q.audio.play("screamOfJoy.mp3");}
+        //var tick = setInterval(function(){if(audioOn){Q.audio.play("tick.mp3")}},1000);
         setTimeout(function(){
           p.specialSpeedCount--;
-          if (p.specialSpeedCount == 0) {
+          if (p.specialSpeedCount <= 0) {
             p.bulletSpeed = 1000;
             p.stepDelay = 0.1;
           }
+          //clearInterval(tick);
         }, 10000);
       }
       else if(col.obj.isA("SpecialInvisibility")) {
+        //if(audioOn){Q.audio.play("invincibility.mp3");}
         p.specialInvisibilityCount++;
         p.invisible = true;
         setTimeout(function(){
@@ -1760,21 +1764,21 @@ function playerColor(colorInt) {
         
       }
       else if(col.obj.isA("SpecialGun")) {
-        Q.audio.play('gunLoad.mp3');
         p.specialCanFire = true;
         p.specialBullets += 5;
-        Q.stageScene('hud', 3, p);
+        if(audioOn){Q.audio.play('gunLoad.mp3');}
+        Q.stageScene('hud',1, p);
       }
       else if(col.obj.isA("SpecialInvincibility")) {
-        Q.audio.play("invincibility.mp3");
+        if(audioOn){Q.audio.play("invincibility.mp3");}
         p.specialInvincibilityCount++;
         p.life = 100;
-        Q.stageScene('hud', 3, p);
+        Q.stageScene('hud',1, p);
         setTimeout(function(){
           p.specialInvincibilityCount--;
           if (p.specialInvincibilityCount == 0) {
             p.life = 10;
-            Q.stageScene('hud', 3, p);
+            Q.stageScene('hud',1, p);
           }
         }, 10000);
       }
@@ -1784,7 +1788,7 @@ function playerColor(colorInt) {
         red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: Q.SPRITE_RED }));
         setTimeout(function(){red.destroy()},200);
         setTimeout(function(){p.beenHit = false}, 200);
-        Q.stageScene('hud', 3, p);
+        Q.stageScene('hud',1, p);
       }
 
       if (p.life == 0) {
@@ -1834,7 +1838,7 @@ function playerColor(colorInt) {
         setTimeout(function() { p.specialCanFire = true}, 200);
         //decrement amount of available bullets
         p.specialBullets--;
-        Q.stageScene('hud', 3, p);
+        Q.stageScene('hud',1, p);
       }
     },
 
@@ -1846,7 +1850,7 @@ function playerColor(colorInt) {
     },
 
     fireLeft: function() {
-      Q.audio.play('laser.mp3');
+      if(audioOn){Q.audio.play('laser.mp3');}
       var p = this.p;
       var angle, x, y;
       if (!p.canFire)
@@ -1873,7 +1877,7 @@ function playerColor(colorInt) {
       setTimeout(function() { p.canFire = true}, 200);
     },
     fireRight: function() {
-      Q.audio.play('laser.mp3');
+      if(audioOn){Q.audio.play('laser.mp3');}
       var p = this.p;
       var angle, x, y;
       if (!p.canFire)
@@ -1900,7 +1904,7 @@ function playerColor(colorInt) {
       setTimeout(function() { p.canFire = true}, 200);
     },
     fireUp: function() {
-      Q.audio.play('laser.mp3');
+      if(audioOn){Q.audio.play('laser.mp3');}
       var p = this.p;
       var angle, x, y;
       if (!p.canFire)
@@ -1928,7 +1932,7 @@ function playerColor(colorInt) {
       setTimeout(function() { p.canFire = true}, 200);
     },
     fireDown: function() {
-      Q.audio.play('laser.mp3');
+      if(audioOn){Q.audio.play('laser.mp3');}
       var p = this.p;
       var angle, x, y;
       if (!p.canFire)
@@ -2430,25 +2434,36 @@ function playerColor(colorInt) {
   
   //HUD
   Q.scene('hud',function(stage) {
-  var container = stage.insert(new Q.UI.Container({x: 60, y: 0}));
+    var container = stage.insert(new Q.UI.Container({x: 60, y: 0}));
 
-  var health = container.insert(new Q.UI.Text({x:30, y: 20,
-    label: "Health: " + stage.options.life, color: "green" }));
+    var health = container.insert(new Q.UI.Text({x:30, y: 20,
+      label: "Health: " + stage.options.life, color: "green" }));
 
-  var specialBullets = container.insert(new Q.UI.Text({x:380 -170, y: 20,
-    label: "Special Bullets: " + stage.options.specialBullets, color: "white" }));
+    var specialBullets = container.insert(new Q.UI.Text({x:380 -170, y: 20,
+      label: "Special Bullets: " + stage.options.specialBullets, color: "white" }));
 
-  var hasKey = container.insert(new Q.UI.Text({x:545 -170, y: 20,
-    label: "Keys: " + stage.options.keys, color: "white" }));
+    var hasKey = container.insert(new Q.UI.Text({x:545 -170, y: 20,
+      label: "Keys: " + stage.options.keys, color: "white" }));
 
-  var controls = container.insert(new Q.UI.Text({x:1050, y: 20,
-    label: "Move: WASD, Shoot: IJKL, Special: 'SPACE'", color: "white" }));
-  container.fit(20);
-});
+    var controls = container.insert(new Q.UI.Text({x:1050, y: 20,
+      label: "Move: WASD, Shoot: IJKL, Special: 'SPACE'", color: "white" }));
 
-  //Main game screen
-  Q.scene("mainMenu",function(stage) {
-    //Set up the main screen and buttons
+    var audio = container.insert(new Q.UI.Button({ x: 1300, y: 730, fill: "#CCCCCC",
+                                                     label: "Audio" })) 
+
+    audio.on("click",function() {
+      if (audioOn) {
+        audioOn = false;
+        Q.audio.stop();
+      }
+      else {
+        audioOn = true;
+        if(audioOn)Q.audio.play("background.mp3");
+      }
+      
+    });
+
+    container.fit(20);
   });
 
 //////////////////////////// HUD AND OSD ABOVE /////////////////////////////////
@@ -2477,7 +2492,7 @@ function playerColor(colorInt) {
     tutorial.on("click",function() {
       Q.clearStages();
       Q.stageScene("tutorial",1, { label: "Tutorial" });
-      Q.stageScene('hud', 3, Q('Player').first().p);
+      Q.stageScene('hud',1, Q('Player').first().p);
     });
     story.on("click",function() {
       loadCoOp();
@@ -2601,7 +2616,8 @@ function playerColor(colorInt) {
     totalKeys = 0;
     bossDefeated = false;
     bossInserted = false;
-    Q.audio.play("background.mp3",{loop: true});
+    audioOn = true;
+    if(audioOn){Q.audio.play("background.mp3",{loop: true});}
 
     //insert the collision layer and background layer
     stage.insert(new Q.TileLayer({ dataAsset: 'level2Background.json', sheet: 'tiles', type: Q.SPRITE_NONE }));
@@ -2676,18 +2692,20 @@ function playerColor(colorInt) {
     //When the enemies have been defeated display label
     stage.on("step",function() {
       if ((currentPlayer.p.x > 1000)  && (currentPlayer.p.x < 1300) && (currentPlayer.p.y < 190 + moveY) && !bossInserted) {
-        Q.audio.play("doorClose.mp3");
+        if(audioOn){Q.audio.play("doorClose.mp3");}
         stage.insert(new Q.Boss({ x: 1300, y: -300 + moveY}));
         stage.insert(new Q.bossDoor({ x: 1136, y: 300 + moveY}));
         bossInserted = true;
       }
 
-      if(Q("Boss").length == 0 && !Q.stage(1) && bossDefeated) { 
+      if(Q("Boss").length == 0 && Q.stage(1) && bossDefeated) { 
         Q.audio.stop();
+        Q.clearStages();
         Q.stageScene("endGame",1, { label: "You Win!" }); 
-      } else if(Q("Player").length == 0 && !Q.stage(1) && allPlayers.length == 0) { 
+      } else if(Q("Player").length == 0 && Q.stage(1)) { 
         Q.audio.stop();
-        Q.audio.play("youLose.mp3");
+        if(audioOn){Q.audio.play("youLose.mp3");}
+        Q.clearStages();
         Q.stageScene("endGame",1, { label: "You Lose!" }); 
       }
     });
@@ -2711,7 +2729,7 @@ function playerColor(colorInt) {
     restartButton.on("click",function() {
       Q.clearStages();
       Q.stageScene('level2');
-      Q.stageScene('hud', 3, Q('Player').first().p);
+      Q.stageScene('hud', 1, Q('Player').first().p);
     });
     mainMenuButton.on("click",function() {
       Q.clearStages();
