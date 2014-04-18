@@ -1778,7 +1778,7 @@ function playerColor(colorInt) {
           }
         }, 10000);
       }
-      else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet") || col.obj.isA("OtherEnemy1")) && !p.beenHit) {
+      else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet") || col.obj.isA("OtherEnemy1") || col.obj.isA("Boss")) && !p.beenHit) {
         p.beenHit = true;
         p.life--;
         red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: Q.SPRITE_RED }));
