@@ -209,7 +209,7 @@ function findEnemy(id) {
  */
 function loadGame() {
   Q.load(["sprites.png", "sprites.json", "level1Collision.json", "level1Background.json", "tiles.png", "redScreen.json", "level2Collision.json", "level2Background.json", 
-    "laser.mp3", "tick.mp3", "explosion.mp3", "doorOpen.mp3", "screamOfJoy.mp3", "key.mp3", "background.mp3", "doorClose.mp3", "gunLoad.mp3", "invincibility.mp3", "youLose.mp3"], function() {
+    "laser.mp3", "tick.mp3", "explosion.mp3", "doorOpen.mp3", "screamOfJoy.mp3", "key.mp3", "background.mp3", "doorClose.mp3", "gunLoad.mp3", "invincibility.mp3", "youLose.mp3", "success.mp3", "hurt.mp3"], function() {
     Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
     Q.compileSheets("sprites.png","sprites.json");
     Q.stageScene("mainMenu",1, { label: "Main Menu" }); 
@@ -398,6 +398,7 @@ function playerColor(colorInt) {
   var bossDefeated = false;
   var bossInserted = false;
   var soundOn = false;
+  var enemiesInBigRoom = new Array();
   
 /////////////////// SPRITE VALUES AND OTHER SETTINGS ABOVE /////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -1672,7 +1673,7 @@ function playerColor(colorInt) {
       this._super(p,{
         sheet:"player",
         sprite:"player",
-        frame: 24,
+        frame: 102,
         type: Q.SPRITE_PLAYER,
         stepDelay: 0.1,
         life: 10,
@@ -1707,10 +1708,6 @@ function playerColor(colorInt) {
       Q.input.on("specialGun",this,"specialGun");
       this.on("hit.sprite",this,"hit");
       this.on("touchEnd",this,"fire");
-    },
-
-    click: function(touch) {
-    alert("what the ");
     },
 
     hit: function(col) {
@@ -1783,6 +1780,7 @@ function playerColor(colorInt) {
         }, 10000);
       }
       else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet") || col.obj.isA("OtherEnemy1") || col.obj.isA("Boss")) && !p.beenHit) {
+        if(audioOn){Q.audio.play("hurt.mp3");}
         p.beenHit = true;
         p.life--;
         red = this.stage.insert(new Q.TileLayer({ dataAsset: 'redScreen.json', sheet: 'tiles', type: Q.SPRITE_RED }));
@@ -2673,6 +2671,10 @@ function playerColor(colorInt) {
     //insert the player
     currentPlayer = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
     
+    //This will populate the big room with enemies and put them in an array
+    var wave = setInterval(function() {enemiesInBigRoom.push(stage.insert(new Q.Enemy({ x: 4000, y: 800 + moveY})))}, 500);
+    setTimeout(function(){clearInterval(wave)}, 10000);
+
     //insert the enemies
     // stage.insert(new Q.Enemy({ x: 1800, y: 1500 + moveY})); // spawn room
     enemyOne = stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
@@ -2699,6 +2701,7 @@ function playerColor(colorInt) {
 
       if(Q("Boss").length == 0 && Q.stage(1) && bossDefeated) { 
         Q.audio.stop();
+        if(audioOn){Q.audio.play("success.mp3");}
         Q.clearStages();
         Q.stageScene("endGame",1, { label: "You Win!" }); 
       } else if(Q("Player").length == 0 && Q.stage(1)) { 
