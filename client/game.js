@@ -213,6 +213,15 @@ function loadGame() {
     Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
     Q.compileSheets("sprites.png","sprites.json");
     Q.stageScene("mainMenu",1, { label: "Main Menu" }); 
+
+    }, {
+    progressCallback: function(loaded,total) {
+      var element = document.getElementById("loading_progress");
+      element.style.width = Math.floor(loaded/total*100) + "%";
+      if (loaded == total) {
+        document.getElementById("loading").remove();
+      }
+    }
   });
 };
 
