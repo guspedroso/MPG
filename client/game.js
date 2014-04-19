@@ -209,7 +209,7 @@ function findEnemy(id) {
  */
 function loadGame() {
   Q.load(["sprites.png", "sprites.json", "level1Collision.json", "level1Background.json", "tiles.png", "redScreen.json", "level2Collision.json", "level2Background.json", 
-    "laser.mp3", "tick.mp3", "explosion.mp3", "doorOpen.mp3", "screamOfJoy.mp3", "key.mp3", "background.mp3", "doorClose.mp3", "gunLoad.mp3", "invincibility.mp3", "youLose.mp3", "success.mp3", "hurt.mp3"], function() {
+    "laser.mp3", "tick.mp3", "explosion.mp3", "doorOpen.mp3", "screamOfJoy.mp3", "key.mp3", "background.mp3", "doorClose.mp3", "gunLoad.mp3", "invincibility.mp3", "youLose.mp3", "success.mp3", "hurt.mp3", "invisible.mp3"], function() {
     Q.sheet("tiles","tiles.png", { tileW: 32, tileH: 32 }); 
     Q.compileSheets("sprites.png","sprites.json");
     Q.stageScene("mainMenu",1, { label: "Main Menu" }); 
@@ -391,15 +391,20 @@ function playerColor(colorInt) {
   Q.SPRITE_KEY = 65536;
   Q.SPRITE_OTHER_PLAYER = 131072;
 
-  var totalEnemiesKilled; //Keep track of enemies killed
   var moveX = 0; //If we need to move all the entities on the board consistently
   var moveY = 1150;
   var totalKeys = 0; //Once the player has gotten all the keys, open the boss door
   var bossDefeated = false;
   var bossInserted = false;
-  var soundOn = false;
-  var enemiesInBigRoom = new Array();
-  
+  var audioOn = false;
+  var bigRoomKeyInserted = false;
+  var otherRoomKeyInserted = false;
+  var finishedLoadingEnemies = false;
+  var enemiesInBigRoomAllDead = false;
+  var enemiesInOtherRoomsAllDead = false;
+  var enemiesInBigRoom = [];
+  var enemiesInOtherRooms = [];
+
 /////////////////// SPRITE VALUES AND OTHER SETTINGS ABOVE /////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////// ENTITIES AND ACTIONS //////////////////////////////
@@ -882,7 +887,7 @@ function playerColor(colorInt) {
         sprite:"boss",
         life: 10, //change the life to something reasonable once we get things going
         bulletSpeed: 600,
-        speed: 400,
+        speed: 350,
         direction: 'left',
         switchPercent: 2,
         type: Q.SPRITE_ENEMY,
@@ -993,7 +998,7 @@ function playerColor(colorInt) {
                 })
       );
       setTimeout(function() { p.bulletInserted = false}, 80);
-      setTimeout(function() { p.canFire = true}, 900);
+      setTimeout(function() { p.canFire = true}, 600);
     },
 
     step: function(dt) {
@@ -1104,6 +1109,7 @@ function playerColor(colorInt) {
         switchPercent: 2,
         type: Q.SPRITE_ENEMY,
         canFire: true,
+        isAlive: true,
         bulletInserted: false,
         collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_EXPLOSION | Q.SPRITE_OTHER_PLAYER
       });
@@ -1159,7 +1165,7 @@ function playerColor(colorInt) {
         this.p.life--;
         if (this.p.life == 0) 
         {
-          totalEnemiesKilled++;
+          this.p.isAlive = false;
           //generate a random value to determine whether to drop a life or special
           var lifeOrSpecial = Math.floor((Math.random()*2)+1);
 
@@ -1190,7 +1196,7 @@ function playerColor(colorInt) {
       }
       else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
       {
-        totalEnemiesKilled++;
+        this.p.isAlive = false;
         //generate a random value to determine whether to drop a life or special
         var lifeOrSpecial = Math.floor((Math.random()*2)+1);
 
@@ -1749,7 +1755,7 @@ function playerColor(colorInt) {
         }, 10000);
       }
       else if(col.obj.isA("SpecialInvisibility")) {
-        //if(audioOn){Q.audio.play("invincibility.mp3");}
+        if(audioOn){Q.audio.play("invisible.mp3");}
         p.specialInvisibilityCount++;
         p.invisible = true;
         setTimeout(function(){
@@ -2244,7 +2250,7 @@ function playerColor(colorInt) {
       this._super(p,{
         sheet:"player",
         sprite:"player", 
-        frame: 24,
+        frame: 2,
         type: Q.SPRITE_OTHER_PLAYER,
         stepDelay: 0.1,
         life: 10,
@@ -2576,7 +2582,6 @@ function playerColor(colorInt) {
 
   //First level
   Q.scene("level1",function(stage) {
-    totalEnemiesKilled = 0;
     stage.collisionLayer(new Q.TileLayer({ dataAsset: 'level1Collision.json', sheet: 'tiles', type: Q.SPRITE_TILES }));
     stage.insert(new Q.TileLayer({ dataAsset: 'level1Background.json', sheet: 'tiles', type: Q.SPRITE_NONE }));
 
@@ -2609,10 +2614,11 @@ function playerColor(colorInt) {
 
   //Second level
   Q.scene("level2",function(stage) {
-    totalEnemiesKilled = 0;
     totalKeys = 0;
     bossDefeated = false;
     bossInserted = false;
+    bigRoomKeyInserted = false;
+    otherRoomKeyInserted = false;
     audioOn = true;
     if(audioOn){Q.audio.play("background.mp3",{loop: true});}
 
@@ -2643,16 +2649,10 @@ function playerColor(colorInt) {
 
     //insert the keys
     stage.insert(new Q.Key({ x: 1300, y: 1350 + moveY})); //spawn room
-    stage.insert(new Q.SpecialSpeed({ x: 1350, y: 1350 + moveY})); //spawn room
-    stage.insert(new Q.SpecialSpeed({ x: 1550, y: 1350 + moveY})); //spawn room
-    stage.insert(new Q.SpecialSpeed({ x: 1600, y: 1350 + moveY})); //spawn room
-    stage.insert(new Q.blueKey({ x: 1450, y: 1350 + moveY})); //spawn room
-    stage.insert(new Q.blueKey({ x: 4464, y: 900 + moveY})); //spawn room
-    stage.insert(new Q.goldenKey({ x: 1400, y: 1350 + moveY})); //spawn room
-    stage.insert(new Q.Key({ x: 2400, y: 1250 + moveY})); //right room
-    stage.insert(new Q.Key({ x: 80, y: 2420 + moveY})); //left room
-    stage.insert(new Q.Key({ x: 1350, y: 2000 + moveY})); //bottom room
-    stage.insert(new Q.Key({ x: 100, y: 200 + moveY})); //top room
+    stage.insert(new Q.Key({ x: 2200, y: 1250 + moveY})); //right room
+    stage.insert(new Q.Key({ x: 4250, y: 1900 + moveY})); //left room
+    stage.insert(new Q.Key({ x: 4250, y: 1200 + moveY})); //bottom room
+    stage.insert(new Q.Key({ x: 100, y: 100 + moveY})); //top room
 
     //insert golden key and specials 
     stage.insert(new Q.goldenKey({ x: 150, y: 2670 + moveY}));
@@ -2670,22 +2670,28 @@ function playerColor(colorInt) {
 
     //insert the player
     currentPlayer = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
-    
-    //This will populate the big room with enemies and put them in an array
-    var wave = setInterval(function() {enemiesInBigRoom.push(stage.insert(new Q.Enemy({ x: 4000, y: 800 + moveY})))}, 500);
-    setTimeout(function(){clearInterval(wave)}, 10000);
+    /*
+    //Insert the enemies
+    var bigRoomWave = setInterval(function() {
+      enemiesInBigRoom.push(stage.insert(new Q.Enemy({ x: 4000, y: 800 + moveY})))}, 250);
 
-    //insert the enemies
-    // stage.insert(new Q.Enemy({ x: 1800, y: 1500 + moveY})); // spawn room
+    var topRoomWave = setInterval(function() {
+      enemiesInOtherRooms.push(stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY})))}, 1000);
+
+    var leftRoomWave = setInterval(function() {
+      enemiesInOtherRooms.push(stage.insert(new Q.Enemy({ x: 3700, y: 2000 + moveY})))}, 1000);
+
+    var bottomRoomWave = setInterval(function() {
+      enemiesInOtherRooms.push(stage.insert(new Q.Enemy({ x: 3700, y: 1400 + moveY})))}, 1000);
+
+    setTimeout(function() { 
+      clearInterval(bigRoomWave),
+      clearInterval(topRoomWave),
+      clearInterval(leftRoomWave),
+      clearInterval(bottomRoomWave),
+      finishedLoadingEnemies = true}, 11000);
+    */
     enemyOne = stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
-   // stage.insert(new Q.Enemy({ x: 1350, y: 2000 + moveY})); //bottom 
-    //stage.insert(new Q.Enemy({ x: 2000, y: 1200 + moveY})); //right
-   // stage.insert(new Q.Enemy({ x: 500, y: 2000 + moveY})); //left
-   // stage.insert(new Q.Enemy({ x: 600, y: 2000 + moveY})); //left
-    //enemyTwo = stage.insert(new Q.Enemy({ x: 700, y: 2000 + moveY})); //left
-   // stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY})); //top
-   // stage.insert(new Q.Enemy({ x: 300, y: 300 + moveY})); //top
-   // stage.insert(new Q.Enemy({ x: 2000, y: 300 + moveY})); //top
    
     //Set viewport to follow player
     stage.add("viewport").follow(currentPlayer);
@@ -2693,10 +2699,45 @@ function playerColor(colorInt) {
     //When the enemies have been defeated display label
     stage.on("step",function() {
       if ((currentPlayer.p.x > 1000)  && (currentPlayer.p.x < 1300) && (currentPlayer.p.y < 190 + moveY) && !bossInserted) {
+        stage.insert(new Q.Boss({ x: 1300, y: -600 + moveY}));
         if(audioOn){Q.audio.play("doorClose.mp3");}
-        stage.insert(new Q.Boss({ x: 1300, y: -300 + moveY}));
         stage.insert(new Q.bossDoor({ x: 1136, y: 300 + moveY}));
         bossInserted = true;
+      }
+
+      var bigRoomBool = false;
+      if (finishedLoadingEnemies) {
+        bigRoomBool = true;
+      };
+      for (var i = 0; i < enemiesInBigRoom.length; i++) {
+        if (enemiesInBigRoom[i].p.isAlive) {
+          bigRoomBool = false;
+        }
+      }
+      if (bigRoomBool) {
+        enemiesInBigRoomAllDead = true;}
+
+      if (enemiesInBigRoomAllDead && !bigRoomKeyInserted && finishedLoadingEnemies) {
+        bigRoomKeyInserted = true;
+
+        stage.insert(new Q.blueKey({ x: 4460, y: 1060 + moveY})); 
+      }
+
+      var otherRoomBool = false;
+      if (finishedLoadingEnemies) {
+        otherRoomBool = true;
+      };
+      for (var i = 0; i < enemiesInOtherRooms.length; i++) {
+        if (enemiesInOtherRooms[i].p.isAlive) {
+          otherRoomBool = false;
+        }
+      }
+      if (otherRoomBool) {
+        enemiesInOtherRoomsAllDead = true;}
+
+      if (enemiesInOtherRoomsAllDead && !otherRoomKeyInserted && finishedLoadingEnemies) {
+        otherRoomKeyInserted = true;
+        stage.insert(new Q.blueKey({ x: 3120, y: 1200 + moveY})); 
       }
 
       if(Q("Boss").length == 0 && Q.stage(1) && bossDefeated) { 
