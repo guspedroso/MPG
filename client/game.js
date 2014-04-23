@@ -25,6 +25,9 @@ var allPlayers;
 var enemyOne;
 //All the other enemies
 var allEnemies;
+var boss;
+var bossDoorOpen = true;
+var bossReadied = false;
 
 init();
 
@@ -34,6 +37,7 @@ function init(){
     transports: ["websocket"]});
 	allPlayers = [];
 	allEnemies = [];
+  boss = [];
 	setEventHandlers();
 };
 
@@ -45,12 +49,20 @@ function setEventHandlers() {
 	socket.on('move player', movePlayer);
 	socket.on('remove player', removePlayer);
 	socket.on('remove enemy', removeEnemy);
+	socket.on('remove boss', removeBoss);
 	socket.on('new enemy', addNewEnemy);
+	socket.on('new boss', addBoss);
 	socket.on('move enemy', moveEnemy);
+	socket.on('move boss', moveBoss);
   socket.on('fire bullet', drawFriendlyBullet);
 	socket.on('fire enemy bullet', drawEnemyBullet);
+  socket.on('fire boss bullet', drawBossBullet);
   socket.on('door open', doorOpen);
   socket.on('client color', clientColor);
+  socket.on('item pickup', itemPickup);
+  socket.on('insert key', insertKeys);
+  socket.on('boss all ready', bossDoor);
+  socket.on('boss control add', bossControl);
 };
 
 // This function is executed upon socket connect message
@@ -81,7 +93,20 @@ function addNewPlayer(data) {
 
 	//push player to player list on client
   var newPlayerColor = playerColor(data.c);
-  var newPlayer = new Q.OtherPlayer1({ x: data.x, y: data.y, pid: data.pid, playerColor: newPlayerColor });
+  var newPlayerFrame;
+  if (newPlayerColor == "blue") {
+    newPlayerFrame = 102;
+  } 
+  else if (newPlayerColor == "red") {
+    newPlayerFrame = 2;
+  }
+  else if (newPlayerColor == "green") {
+    newPlayerFrame = 52;
+  }
+  else if (newPlayerColor == "black") {
+    newPlayerFrame = 77;
+  }
+  var newPlayer = new Q.OtherPlayer1({ x: data.x, y: data.y, pid: data.pid, playerColor: newPlayerColor, frame: newPlayerFrame});
   console.log("new player " + data.x + " " + data.y);
   Q.stage().insert(newPlayer);
 	allPlayers.push(newPlayer);
@@ -107,7 +132,7 @@ function movePlayer(data) {
  */
 function removePlayer(data) {
   var playerDel = findPlayer(data.pid);
-  playerDel.destroy();
+  playerDel.death();
 };
 
 function addNewEnemy(data) {
@@ -120,6 +145,20 @@ function addNewEnemy(data) {
 
 	allEnemies.push(newEnemy);
 	
+	// console.log(allEnemies.length);
+};
+
+function addBoss(data) {
+	// console.log(data.x, data.y, data.pid);
+	// console.log("Enemy Added");
+	var newBoss = new Q.Boss2({ x: data.x, y: data.y, pid: data.pid}); //change to Q.OtherEnemy1 for testing
+  //console.log("new enemy " + data.pid + " " + data.x + " " + data.y);
+
+  Q.stage().insert(newBoss);
+
+	if(boss.length < 1){
+		boss.push(newBoss);
+	}
 	// console.log(allEnemies.length);
 };
 
@@ -140,11 +179,31 @@ function moveEnemy(data) {
 	
 };
 
+function moveBoss(data) {
+	// console.log("MOVEMENT DATA ", data);
+	var bossMove = boss[0];
+	//change his coordinates
+	// playerMove.setX(data.x);
+	// playerMove.setY(data.y);
+
+ // var playerMove2 = Q.stage().locate(data.pxs, data.pys, Q.SPRITE_PLAYER);
+	// if (bossMove) {
+   //console.log(data.pid + " " + data.px + " " + data.py);
+    boss[0].set({x: data.bx, y: data.by});
+    // bossMove.animate(data.po, "false");
+	// }
+	
+};
+
 function removeEnemy(data) {
   var enemyDel = findEnemy(data.pid);
 	enemyDel.destroy();
 };
 
+function removeBoss(data) {
+  var bossDel = boss;
+	bossDel.destroy();
+};
 /*
  * drawFriendlyBullet function which will draw bullets from other players when 
  * they fire their primary weapon. 
@@ -152,7 +211,12 @@ function removeEnemy(data) {
 function drawFriendlyBullet(data) {
   var playerFire = findPlayer(data.pid);
   playerFire.animate(data.po, "true");
-  playerFire.fire(data.po);
+  if (data.pg == 0) {
+    playerFire.fire(data.po);
+  }
+  else if (data.pg == 1) {
+    playerFire.specialGun(data.po);
+  }
 };
 
 function drawEnemyBullet(data) {
@@ -161,17 +225,78 @@ function drawEnemyBullet(data) {
   enemyFire.fire(data.po);
 };
 
+function drawBossBullet(data) {
+  boss[0].fire(data.bo);
+};
+
 /*
  *  doorOpen Function opens doors across the multiplayer aspect
  */
 function doorOpen(data) {
-  console.log("door open");
-  var doorDel = Q.stage().locate(data.doorX, data.doorY ,Q.SPRITE_DOOR);
+  // console.log("door open");
+  var doorDel = Q.stage().locate(data.doorX, data.doorY, Q.SPRITE_DOOR);
   doorDel.destroy();
+};
+
+
+/*
+ * itemPickup function removes items from the map as they're picked up.
+ */ 
+function itemPickup(data) {
+  if (data.iType == "life") {
+    var itemDel = Q.stage().locate(data.ix, data.iy, Q.SPRITE_LIFE);
+  }
+  else if (data.iType == "special") {
+    var itemDel = Q.stage().locate(data.ix, data.iy, Q.SPRITE_SPECIAL);
+  }
+  else if (data.iType == "key") {
+    var itemDel = Q.stage().locate(data.ix, data.iy, Q.SPRITE_KEY);
+  }
+  itemDel.destroy();
+};
+
+function insertKeys(data) {
+  for (var i = 0; i < data.keyCount; i++) {
+    Q.stage().insert(new Q.Key({ x: data.px + (i * 15), y: data.py + (i * 15) }));
+  }
+  if (data.blueKey) {
+    Q.stage().insert(new Q.blueKey({ x: data.px - 15, y: data.py + 15 }));
+  }
+  if (data.goldenKey) {
+    Q.stage().insert(new Q.goldenKey({ x: data.px - 15, y: data.py - 15 }));
+  }
+};
+
+function bossDoor() {
+  if (bossDoorOpen) {
+    if (audioOn) {
+      Q.audio.play("doorClose.mp3");
+    }
+    Q.stage().insert(new Q.bossDoor({ x: 1136, y: 300 + moveY}));
+    bossDoorOpen = false;
+  }
+};
+
+function bossControl() {
+  boss[0] = Q.stage().insert(new Q.Boss({ x: 1300, y: -600 + moveY }));
+  bossInserted = true;
+  socket.emit('new boss', { x: 1300, y: -600 + moveY });
 };
 
 function clientColor(data) {
   currentPlayer.p.playerColor = playerColor(data);
+  if (currentPlayer.p.playerColor == "blue") {
+    currentPlayer.p.frame = 102;
+  } 
+  else if (currentPlayer.p.playerColor == "red") {
+    currentPlayer.p.frame = 2;
+  }
+  else if (currentPlayer.p.playerColor == "green") {
+    currentPlayer.p.frame = 52;
+  }
+  else if (currentPlayer.p.playerColor == "black") {
+    currentPlayer.p.frame = 77;
+  }
 };
 
 /*
@@ -242,6 +367,13 @@ function loadCoOp() {
 	var e1y = enemyOne.p.y;
 	console.log("Enemy: " + e1x + " " + e1y);
 	socket.emit('new enemy', { x: e1x, y: e1y, t: "enemy"});
+	
+	// if(currentPlayer.p.playerColor == "blue"){
+		// var b1x = boss.p.x;
+		// var b1y = boss.p.y;
+		// socket.emit('new boss', { x: b1x, y: b1y });
+	// }
+
 };
 
 /*
@@ -313,6 +445,7 @@ function playerColor(colorInt) {
       var p = this.entity.p,
           moved = false;
       p.stepWait -= dt;
+      var stepDir;
 
       if(p.stepping) {
         p.x += p.diffX * dt / p.stepDelay;
@@ -331,14 +464,18 @@ function playerColor(colorInt) {
 
       if(Q.inputs['left']) {
         p.diffX = -p.stepDistance;
+        stepDir = "left";
       } else if(Q.inputs['right']) {
         p.diffX = p.stepDistance;
+        stepDir = "right";
       }
 
       if(Q.inputs['up']) {
         p.diffY = -p.stepDistance;
+        stepDir = "up";
       } else if(Q.inputs['down']) {
         p.diffY = p.stepDistance;
+        stepDir = "down";
       }
 
       if(p.diffY || p.diffX ) { 
@@ -350,7 +487,6 @@ function playerColor(colorInt) {
         p.stepWait = p.stepDelay; 
 
         // Check direction
-        var stepDir;
         if (p.diffY > 0) {
           stepDir = "down";
         } else if (p.diffY < 0) {
@@ -364,7 +500,12 @@ function playerColor(colorInt) {
         }
 
         socket.emit('move player', { x: p.destX, y: p.destY, o: stepDir });
+      } 
+      
+      else {
+        socket.emit('move player', { x: p.x, y: p.y, o: stepDir });
       }
+      
     }
   });
 
@@ -474,7 +615,10 @@ function playerColor(colorInt) {
       {
         objP.keys--;
         Q.stageScene('hud',1, objP);
-        if(audioOn){Q.audio.play("doorOpen.mp3");}
+        if (audioOn) {
+          Q.audio.play("doorOpen.mp3");
+        }
+        socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
         this.destroy();
       }
       else
@@ -502,7 +646,10 @@ function playerColor(colorInt) {
       if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && objP.hasGoldenKey) 
       {
         objP.hasGoldenKey = false;
-        if(audioOn){Q.audio.play("doorOpen.mp3");}
+        if (audioOn) {
+          Q.audio.play("doorOpen.mp3");
+        }
+        socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
         this.destroy();
       }
       else
@@ -530,7 +677,10 @@ function playerColor(colorInt) {
       if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && objP.hasBlueKey) 
       {
         objP.hasBlueKey = false;
-        if(audioOn){Q.audio.play("doorOpen.mp3");}
+        if (audioOn) {
+          Q.audio.play("doorOpen.mp3");
+        }
+        socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
         this.destroy();
       }
       else
@@ -551,14 +701,19 @@ function playerColor(colorInt) {
         collisionMask: Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_OTHER_PLAYER
       });
       this.on("hit",this,"collision");
+      bossDoorOpen = false;
     },
 
     collision: function(col) {
       var objP = col.obj.p;
       if (((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) && (bossDefeated)) 
       {
-        if(audioOn){Q.audio.play("doorOpen.mp3");}
+        if (audioOn) {
+          Q.audio.play("doorOpen.mp3");
+        }
+        socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
         this.destroy();
+        
       }
       else
       {
@@ -586,7 +741,10 @@ function playerColor(colorInt) {
       {
         objP.keys--;
         Q.stageScene('hud',1, objP);
-        if(audioOn){Q.audio.play("doorOpen.mp3");}
+        if (audioOn) {
+          Q.audio.play("doorOpen.mp3");
+        }
+        socket.emit('door open', { doorX: this.p.x, doorY: this.p.y });
         this.destroy();
       }
       else
@@ -726,6 +884,7 @@ function playerColor(colorInt) {
       var objP = col.obj.p;
       if ((objP.type == Q.SPRITE_PLAYER) || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
+        socket.emit('item pickup', { ix: this.p.x, iy: this.p.y, it: "life" });
       }
     }
   });
@@ -748,6 +907,7 @@ function playerColor(colorInt) {
       var objP = col.obj.p;
       if ((objP.type == Q.SPRITE_PLAYER)) {// || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
+        socket.emit('item pickup', { ix: this.p.x, iy: this.p.y, it: "special" });
       }
     }
   });
@@ -770,6 +930,7 @@ function playerColor(colorInt) {
       var objP = col.obj.p;
       if ((objP.type == Q.SPRITE_PLAYER)) {// || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
+        socket.emit('item pickup', { ix: this.p.x, iy: this.p.y, it: "special" });
       }
     }
   });
@@ -792,6 +953,7 @@ function playerColor(colorInt) {
       var objP = col.obj.p;
       if ((objP.type == Q.SPRITE_PLAYER)) {// || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
+        socket.emit('item pickup', { ix: this.p.x, iy: this.p.y, it: "special" });
       }
     }
   });
@@ -814,6 +976,7 @@ function playerColor(colorInt) {
       var objP = col.obj.p;
       if ((objP.type == Q.SPRITE_PLAYER)) {// || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
+        socket.emit('item pickup', { ix: this.p.x, iy: this.p.y, it: "special" });
       }
     }
   });
@@ -836,6 +999,7 @@ function playerColor(colorInt) {
       var objP = col.obj.p;
       if ((objP.type == Q.SPRITE_PLAYER)) {// || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
+        socket.emit('item pickup', { ix: this.p.x, iy: this.p.y, it: "key" });
       }
     }
   });
@@ -858,6 +1022,7 @@ function playerColor(colorInt) {
       var objP = col.obj.p;
       if ((objP.type == Q.SPRITE_PLAYER)) {// || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
+        socket.emit('item pickup', { ix: this.p.x, iy: this.p.y, it: "key" });
       }
     }
   });
@@ -880,6 +1045,7 @@ function playerColor(colorInt) {
       var objP = col.obj.p;
       if ((objP.type == Q.SPRITE_PLAYER)) {// || (objP.type == Q.SPRITE_OTHER_PLAYER)) {
         this.destroy();
+        socket.emit('item pickup', { ix: this.p.x, iy: this.p.y, it: "key" });
       }
     }
   });
@@ -888,6 +1054,19 @@ function playerColor(colorInt) {
 //////////////////////// ENTITIES AND ACTIONS ABOVE ////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////// ENEMY ////////////////////////////////////
+
+  //Set up the animations for the boss, reading frames from boss in sprites.png
+  Q.animations("boss", {
+    boss_fire_right_running: {frames:[15,16], rate: 1/10},
+    boss_fire_left_running: {frames:[8,17], rate: 1/10},
+    boss_fire_front_running: {frames:[0,1], rate: 1/3},
+    boss_fire_back_running: {frames:[13,14], rate: 1/3},
+    boss_run_right: {frames:[4,5], rate: 1/10},
+    boss_run_left: {frames:[6,7], rate: 1/10},
+    boss_run_front: {frames:[2,3], rate: 1/3},
+    boss_run_back: {frames:[11,12], rate: 1/3},
+  });
+
   //create the enemy object
   Q.Sprite.extend("Boss", {
     init: function(p) {
@@ -909,42 +1088,42 @@ function playerColor(colorInt) {
       this.on("step",this,"step");
       this.on('hit',this,"changeDirection");
       this.on("step",this,"tryToFire");
-      //this.on("step",this,"animate")
+      this.on("step",this,"animate")
     },
 
     animate: function() {
       var p = this.p;
       if (p.direction == "right") {
         if (!p.canFire) {
-          this.play("enemy_fire_right_running");
+          this.play("boss_fire_right_running");
         }
         else {
-          this.play("enemy_run_right")
+          this.play("boss_run_right")
         }
         
       }
       else if (p.direction == "left") {
         if (!p.canFire) {
-          this.play("enemy_fire_left_running");
+          this.play("boss_fire_left_running");
         }
         else {
-          this.play("enemy_run_left")
+          this.play("boss_run_left")
         }
       }
       else if (p.direction == "up") {
         if (!p.canFire) {
-          this.play("enemy_fire_back_running");
+          this.play("boss_fire_back_running");
         }
         else {
-          this.play("enemy_run_back")
+          this.play("boss_run_back")
         }
       }
       else if (p.direction == "down" && !p.canFire) {
         if (!p.canFire) {
-          this.play("enemy_fire_front_running");
+          this.play("boss_fire_front_running");
         }
         else {
-          this.play("enemy_run_front")
+          this.play("boss_run_front")
         }
       }
     },
@@ -959,7 +1138,7 @@ function playerColor(colorInt) {
       {
         this.p.life-=2;
       }
-      else if(col.obj.isA("Player") || col.obj.isA("OtherPlayer"))
+      else if(col.obj.isA("Player") || col.obj.isA("OtherPlayer1"))
       {
         this.p.x -= col.separate[0];
         this.p.y -= col.separate[1];
@@ -1006,6 +1185,20 @@ function playerColor(colorInt) {
                        vy: dy * p.bulletSpeed
                 })
       );
+			
+			if (p.direction == "left") {
+				socket.emit('fire boss bullet', { bx: p.x, by: p.y, bo: "left" });
+				
+      } else if (p.direction == "right") {
+				socket.emit('fire boss bullet', { bx: p.x, by: p.y, bo: "right" });
+				
+      } else if (p.direction == "up") {
+				socket.emit('fire boss bullet', { bx: p.x, by: p.y, bo: "up" });
+				
+      } else if (p.direction == "down") {
+				socket.emit('fire boss bullet', { bx: p.x, by: p.y, bo: "down" });
+				
+      }
       setTimeout(function() { p.bulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 600);
     },
@@ -1014,17 +1207,19 @@ function playerColor(colorInt) {
       var p = this.p;
 
       // Randomly try to switch directions
-      if(Math.random() < p.switchPercent / 100) {
+      if (Math.random() < p.switchPercent / 100) {
         this.tryDirection();
       }
 
       // Add velocity in the direction we are currently heading.
-      switch(p.direction) {
+      switch (p.direction) {
         case "left": p.vx = -p.speed; break;
         case "right":p.vx = p.speed; break;
         case "up":   p.vy = -p.speed; break;
         case "down": p.vy = p.speed; break;
       }
+			
+			socket.emit('move boss', { bx: p.x, by: p.y, bo: p.direction });
     },
 
     // Try a random direction 90 degrees away from the 
@@ -1043,7 +1238,7 @@ function playerColor(colorInt) {
     // try moving in a direction 90 away from the normal
     changeDirection: function(col) {
       var p = this.p;
-      if(col.obj.isA("Player") || col.obj.isA("OtherPlayer"))
+      if(col.obj.isA("Player") || col.obj.isA("OtherPlayer1"))
       {
         return;
       }
@@ -1060,28 +1255,171 @@ function playerColor(colorInt) {
     tryToFire: function() {
       var p = this.p;
       var player = Q("Player").first();
-      var otherPlayer = Q("OtherPlayer").first();
+      var otherPlayer = Q("OtherPlayer1").first();
      
-      if(!player)
+      if (!player && !otherPlayer) {
         return;
-      if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y < p.y && !player.p.invisible)) {
-        p.direction = "up";
-        this.fire();
       }
-      else if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y > p.y && !player.p.invisible)) {
-        p.direction = "down";
-        this.fire();
+      if (player) {
+        if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y < p.y && !player.p.invisible)) {
+          p.direction = "up";
+          this.fire();
+        }
+        else if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y > p.y && !player.p.invisible)) {
+          p.direction = "down";
+          this.fire();
+        }
+        else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x < p.x && !player.p.invisible)) {
+          p.direction = "left";
+          this.fire();
+        }
+        else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x > p.x && !player.p.invisible)) {
+          p.direction = "right";
+          this.fire();
+        }
       }
-      else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x < p.x && !player.p.invisible)) {
-        p.direction = "left";
-        this.fire();
+     
+      if (otherPlayer) {
+        if ((otherPlayer.p.x + otherPlayer.p.w > p.x && otherPlayer.p.x - otherPlayer.p.w < p.x && otherPlayer.p.y < p.y && !otherPlayer.p.invisible)) {
+          p.direction = "up";
+          this.fire();
+          //socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "up" });
+        }
+        else if ((otherPlayer.p.x + otherPlayer.p.w > p.x && otherPlayer.p.x - otherPlayer.p.w < p.x && otherPlayer.p.y > p.y && !otherPlayer.p.invisible)) {
+          p.direction = "down";
+          this.fire();
+          //socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "down" });
+        }
+        else if ((otherPlayer.p.y + otherPlayer.p.w > p.y && otherPlayer.p.y - otherPlayer.p.w < p.y && otherPlayer.p.x < p.x && !otherPlayer.p.invisible)) {
+          p.direction = "left";
+          this.fire();
+          //socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "left" });
+        }
+        else if ((otherPlayer.p.y + otherPlayer.p.w > p.y && otherPlayer.p.y - otherPlayer.p.w < p.y && otherPlayer.p.x > p.x && !otherPlayer.p.invisible)) {
+          p.direction = "right";
+          this.fire();
+        //	socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "right" });
+        }
       }
-      else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x > p.x && !player.p.invisible)) {
-        p.direction = "right";
-        this.fire();
-      }
-      
     },
+  });
+	
+	  Q.Sprite.extend("Boss2", {
+    init: function(p) {
+      this._super(p,{
+        sheet:"boss",
+        sprite:"boss",
+        life: 10, //change the life to something reasonable once we get things going
+        bulletSpeed: 600,
+        speed: 350,
+        direction: 'left',
+        switchPercent: 2,
+        type: Q.SPRITE_ENEMY,
+        canFire: true,
+        bulletInserted: false,
+        collisionMask: Q.SPRITE_PLAYER_BULLET | Q.SPRITE_TILES | Q.SPRITE_PLAYER | Q.SPRITE_ENEMY | Q.SPRITE_TREES | Q.SPRITE_DOOR | Q.SPRITE_SPECIAL_BULLET | Q.SPRITE_EXPLOSION | Q.SPRITE_OTHER_PLAYER
+      });
+      this.add("2d, animation");
+      this.on("hit.sprite",this,"hit");
+      //this.on("step",this,"step");
+     // this.on('hit',this,"changeDirection");
+     // this.on("step",this,"tryToFire");
+   //   this.on("step",this,"animate")
+    },
+
+    animate: function() {
+      var p = this.p;
+      if (p.direction == "right") {
+        if (!p.canFire) {
+          this.play("enemy_fire_right_running");
+        }
+        else {
+          this.play("enemy_run_right")
+        }
+        
+      }
+      else if (p.direction == "left") {
+        if (!p.canFire) {
+          this.play("enemy_fire_left_running");
+        }
+        else {
+          this.play("enemy_run_left")
+        }
+      }
+      else if (p.direction == "up") {
+        if (!p.canFire) {
+          this.play("enemy_fire_back_running");
+        }
+        else {
+          this.play("enemy_run_back")
+        }
+      }
+      else if (p.direction == "down" && !p.canFire) {
+        if (!p.canFire) {
+          this.play("enemy_fire_front_running");
+        }
+        else {
+          this.play("enemy_run_front")
+        }
+      }
+    },
+
+   /* hit: function(col) {
+      var life;
+      if(col.obj.isA("PlayerBullet")) 
+      {
+        this.p.life--;
+      }
+      else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
+      {
+        this.p.life-=2;
+      }
+      else if(col.obj.isA("Player") || col.obj.isA("OtherPlayer"))
+      {
+        this.p.x -= col.separate[0];
+        this.p.y -= col.separate[1];
+      }
+      if (this.p.life <= 0) 
+      {
+        bossDefeated = true;
+        this.destroy();
+      }
+    },*/
+
+    fire: function(po) {
+      var p = this.p;
+      var angle, x, y;
+      //See what direction the player is in and set the bullet to go that way
+      if (po == "left") {
+        angle = -90;
+        x = this.p.x - 47;
+        y = this.p.y + 2;
+      } else if (po == "right") {
+        angle = 90;
+        x = this.p.x + 47;
+        y = this.p.y + 2;
+      } else if (po == "up") {
+        angle = 0;
+        x = this.p.x - 8;
+        y = this.p.y - 60;
+      } else if (po == "down") {
+        angle = 180;
+        x = this.p.x + 10;
+        y = this.p.y + 60;
+      }
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+      p.bulletInserted = true;
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.EnemyBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
+    },
+
   });
 
   //Set up the animations for the enemy, reading frames from enemy in sprites.png
@@ -1466,92 +1804,9 @@ function playerColor(colorInt) {
       }
     },
 
-   /* hit: function(col) {
-      var life;
-      if(col.obj.isA("PlayerBullet")) 
-      {
-        this.p.life--;
-        if (this.p.life == 0) 
-        {
-          totalEnemiesKilled++;
-          if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
-            this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
-          }
-          //this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
-          
-          //generate a random value to determine whether to drop a life or special
-          var lifeOrSpecial = Math.floor((Math.random()*2)+1);
-
-          if (lifeOrSpecial == 1) 
-          {
-            life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
-            setTimeout(function(){life.destroy()},10000);
-          }
-          else if (lifeOrSpecial == 2)
-          {
-            var oneOfTheSpecials = Math.floor((Math.random()*4)+1);
-            switch(oneOfTheSpecials)
-            {
-              case 1: this.stage.insert(new Q.SpecialGun({ x: this.p.x, y: this.p.y }));
-                break;
-              case 2: this.stage.insert(new Q.SpecialSpeed({ x: this.p.x, y: this.p.y }));
-                break;
-              case 3: this.stage.insert(new Q.SpecialInvincibility({ x: this.p.x, y: this.p.y }));
-                break;
-              case 4: this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
-                break;
-            }
-          }
-        
-          this.destroy();
-        }
-      }
-      else if(col.obj.isA("SpecialBullet") || col.obj.isA("Explosion"))
-      {
-        totalEnemiesKilled++;
-        if (totalEnemiesKilled == 1 || totalEnemiesKilled == 4 || totalEnemiesKilled == 7 || totalEnemiesKilled == 10) {
-          this.stage.insert(new Q.Key({ x: 1300, y: 1200 + moveY}));
-        }
-
-        //generate a random value to determine whether to drop a life or special
-        var lifeOrSpecial = Math.floor((Math.random()*2)+1);
-
-        if (lifeOrSpecial == 1) 
-        {
-          life = this.stage.insert(new Q.Life({ x: this.p.x, y: this.p.y }));
-          setTimeout(function(){life.destroy()},10000);
-        }
-        else
-        {
-          var oneOfTheSpecials = Math.floor((Math.random()*4)+1);
-          switch(oneOfTheSpecials)
-          {
-            case 1: this.stage.insert(new Q.SpecialGun({ x: this.p.x, y: this.p.y }));
-              break;
-            case 2: this.stage.insert(new Q.SpecialSpeed({ x: this.p.x, y: this.p.y }));
-              break;
-            case 3: this.stage.insert(new Q.SpecialInvincibility({ x: this.p.x, y: this.p.y }));
-              break;
-            case 4: this.stage.insert(new Q.SpecialInvisibility({ x: this.p.x, y: this.p.y }));
-              break;
-          }
-        }
-        
-        this.destroy();
-      }
-      else if(col.obj.isA("Player") || col.obj.isA("OtherPlayer1"))
-      {
-        this.p.x -= col.separate[0];
-        this.p.y -= col.separate[1];
-      }
-    },*/
-
     fire: function(po) {
       var p = this.p;
       var angle, x, y;
-      //if (!p.canFire)
-      //  return;
-    //  p.canFire = false;
       //See what direction the player is in and set the bullet to go that way
       if (po == "left") {
         angle = -90;
@@ -1581,12 +1836,7 @@ function playerColor(colorInt) {
                        vy: dy * p.bulletSpeed
                 })
       );
-      //setTimeout(function() { p.bulletInserted = false}, 80);
-     // setTimeout(function() { p.canFire = true}, 900);
     },
-		
-    // Try a random direction 90 degrees away from the 
-    // current direction of movement
   });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1794,7 +2044,7 @@ function playerColor(colorInt) {
           }
         }, 10000);
       }
-      else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet") || col.obj.isA("OtherEnemy1") || col.obj.isA("Boss")) && !p.beenHit) {
+      else if((col.obj.isA("Enemy") || col.obj.isA("EnemyBullet") || col.obj.isA("OtherEnemy1") || col.obj.isA("Boss") || col.obj.isA("Boss2")) && !p.beenHit) {
         if(audioOn){Q.audio.play("hurt.mp3");}
         p.beenHit = true;
         p.life--;
@@ -1805,8 +2055,13 @@ function playerColor(colorInt) {
       }
 
       if (p.life == 0) {
+        var ragdoll = new Q.OtherPlayer1({ x: this.p.x, y: this.p.y, playerColor: this.p.playerColor });
+        ragdoll.play(this.p.playerColor + "_die");
+        this.stage.insert(ragdoll);
+        
         this.destroy();
-        socket.emit('death');
+        setTimeout(function() { ragdoll.destroy() }, 5000);
+        socket.emit('death', { px: this.p.x, py: this.p.y, regKey: this.p.keys, blueKey: this.p.hasBlueKey, goldenKey: this.p.hasGoldenKey });
       }
     },
 
@@ -1847,6 +2102,7 @@ function playerColor(colorInt) {
                          vy: dy * p.bulletSpeed
                   })
         );
+        socket.emit('fire bullet', { px: p.x, py: p.y, po: p.direction, pg: 1 });
         setTimeout(function() { p.specialBulletInserted = false}, 80);
         setTimeout(function() { p.specialCanFire = true}, 200);
         //decrement amount of available bullets
@@ -1885,7 +2141,7 @@ function playerColor(colorInt) {
                        vy: dy * p.bulletSpeed
                 })
       );
-      socket.emit('fire bullet', { px: p.x, py: p.y, po: "left" });
+      socket.emit('fire bullet', { px: p.x, py: p.y, po: "left", pg: 0 });
       setTimeout(function() { p.leftbulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 200);
     },
@@ -1912,7 +2168,7 @@ function playerColor(colorInt) {
                        vy: dy * p.bulletSpeed
                 })
       );
-      socket.emit('fire bullet', { px: p.x, py: p.y, po: "right" });
+      socket.emit('fire bullet', { px: p.x, py: p.y, po: "right", pg: 0 });
       setTimeout(function() { p.rightbulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 200);
     },
@@ -1939,7 +2195,7 @@ function playerColor(colorInt) {
                        vy: dy * p.bulletSpeed
                 })
       );
-      socket.emit('fire bullet', { px: p.x, py: p.y, po: "up" });
+      socket.emit('fire bullet', { px: p.x, py: p.y, po: "up", pg: 0 });
       setTimeout(function() { p.upbulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 200);
     },
@@ -1966,7 +2222,7 @@ function playerColor(colorInt) {
                        vy: dy * p.bulletSpeed
                 })
       );
-      socket.emit('fire bullet', { px: p.x, py: p.y, po: "down" });
+      socket.emit('fire bullet', { px: p.x, py: p.y, po: "down", pg: 0 });
       setTimeout(function() { p.downbulletInserted = false}, 80);
       setTimeout(function() { p.canFire = true}, 200);
     },
@@ -2286,48 +2542,47 @@ function playerColor(colorInt) {
       this.on("step", this, "animate");
     },
 
-    specialGun: function() {
+    death: function() {
+      var ragdoll = new Q.OtherPlayer1({ x: this.p.x, y: this.p.y, playerColor: this.p.playerColor });
+      ragdoll.play(this.p.playerColor + "_die");
+      this.stage.insert(ragdoll);
+      this.destroy();
+      setTimeout(function() { ragdoll.destroy() }, 5000);
+    },
+    
+    
+    specialGun: function(po) {
       var p = this.p;
-      var angle, x, y;
-      if (!p.specialCanFire)
-        return;
-      p.specialCanFire = false;
-      //check to see if he has the special and if he still has bullets
-      if (p.specialBullets) {          
-        //See what direction the player is in and set the bullet to go that way
-        if (p.direction == "left") {
-          angle = -90;
-          x = this.p.x - 47;
-          y = this.p.y + 2;
-        } else if (p.direction == "right") {
-          angle = 90;
-          x = this.p.x + 47;
-          y = this.p.y + 2;
-        } else if (p.direction == "up") {
-          angle = 0;
-          x = this.p.x - 8;
-          y = this.p.y - 60;
-        } else if (p.direction == "down") {
-          angle = 180;
-          x = this.p.x + 10;
-          y = this.p.y + 60;
-        }
-        var dx =  Math.sin(angle * Math.PI / 180),
-            dy = -Math.cos(angle * Math.PI / 180);
-        p.specialBulletInserted = true;
-        //Insert the bullet into the stage
-        this.stage.insert(
-          new Q.SpecialBullet({ x: x, 
-                         y: y,
-                         vx: dx * p.bulletSpeed,
-                         vy: dy * p.bulletSpeed
-                  })
-        );
-        setTimeout(function() { p.specialBulletInserted = false}, 80);
-        setTimeout(function() { p.specialCanFire = true}, 200);
-        //decrement amount of available bullets
-        p.specialBullets--;
+      var angle, x, y;       
+      //See what direction the player is in and set the bullet to go that way
+      if (po == "left") {
+        angle = -90;
+        x = this.p.x - 47;
+        y = this.p.y + 2;
+      } else if (po == "right") {
+        angle = 90;
+        x = this.p.x + 47;
+        y = this.p.y + 2;
+      } else if (po == "up") {
+        angle = 0;
+        x = this.p.x - 8;
+        y = this.p.y - 60;
+      } else if (po == "down") {
+        angle = 180;
+        x = this.p.x + 10;
+        y = this.p.y + 60;
       }
+      var dx =  Math.sin(angle * Math.PI / 180),
+          dy = -Math.cos(angle * Math.PI / 180);
+      p.specialBulletInserted = true;
+      //Insert the bullet into the stage
+      this.stage.insert(
+        new Q.SpecialBullet({ x: x, 
+                       y: y,
+                       vx: dx * p.bulletSpeed,
+                       vy: dy * p.bulletSpeed
+                })
+      );
     },
 
     SpecialInvincibility: function() {
@@ -2448,19 +2703,25 @@ function playerColor(colorInt) {
   Q.scene('hud',function(stage) {
     var container = stage.insert(new Q.UI.Container({x: 60, y: 0}));
 
-    var health = container.insert(new Q.UI.Text({x:30, y: 20,
+    var health = container.insert(new Q.UI.Text({x:10, y: 20,
       label: "Health: " + stage.options.life, color: "green" }));
 
-    var specialBullets = container.insert(new Q.UI.Text({x:380 -170, y: 20,
-      label: "Special Bullets: " + stage.options.specialBullets, color: "white" }));
+    var specialBullets = container.insert(new Q.UI.Text({x:360 -170, y: 20,
+      label: "Special Bullets: " + stage.options.specialBullets, color: "white" , font: "Century Gothic"}));
 
-    var hasKey = container.insert(new Q.UI.Text({x:545 -170, y: 20,
-      label: "Keys: " + stage.options.keys, color: "white" }));
+    var hasKey = container.insert(new Q.UI.Text({x:525 -170, y: 20,
+      label: "Keys: " + stage.options.keys, color: "white" , font: "Century Gothic"}));
 
-    var controls = container.insert(new Q.UI.Text({x:1050, y: 20,
-      label: "Move: WASD, Shoot: IJKL, Special: 'SPACE'", color: "white" }));
+    var blue = container.insert(new Q.UI.Text({x:675 -170, y: 20,
+      label: "Blue Key: " + stage.options.hasBlueKey, color: "white" , font: "Century Gothic"}));
 
-    var audio = container.insert(new Q.UI.Button({ x: 1300, y: 730, fill: "#CCCCCC",
+    var gold = container.insert(new Q.UI.Text({x:870 -170, y: 20,
+      label: "Gold Key: " + stage.options.hasGoldenKey, color: "white" , font: "Century Gothic"}));
+
+    var controls = container.insert(new Q.UI.Text({x:1040, y: 20,
+      label: "Move: wasd, Shoot: ijkl, Special: space", color: "white" , font: "Century Gothic"}));
+
+    var audio = container.insert(new Q.UI.Button({ x: 1325, y: 20, fill: "#CCCCCC",
                                                      label: "Audio" })) 
 
     audio.on("click",function() {
@@ -2566,7 +2827,7 @@ function playerColor(colorInt) {
     container.fit(20);
   });
 
-  //Scene that occurs after game ends
+  //Scene that occurs after game endsr
   Q.scene('multiplayer',function(stage) {
   var container = stage.insert(new Q.UI.Container({
     x: Q.width/2, y: Q.height/2, fill: "rgba(255,255,255,0.5)"
@@ -2613,7 +2874,7 @@ function playerColor(colorInt) {
       { 
         Q.stageScene("endGame",1, { label: "You Win!" }); 
       } 
-      else if(Q("Player").length == 0 && !Q.stage(1)) 
+      else if(Q("Player").length == 0 && !Q.stage(1) && Q("OtherPlayer1").length == 0) 
       { 
         Q.stageScene("endGame",1, { label: "You Lose!" }); 
       }
@@ -2664,7 +2925,7 @@ function playerColor(colorInt) {
     stage.insert(new Q.Key({ x: 100, y: 100 + moveY})); //top room
 
     //insert golden key and specials 
-    stage.insert(new Q.goldenKey({ x: 150, y: 2670 + moveY}));
+    stage.insert(new Q.goldenKey({ x: 1300, y: 1400 + moveY}));
     stage.insert(new Q.SpecialSpeed({ x: 400, y: 2670 + moveY}));
     stage.insert(new Q.SpecialGun({ x: 500, y: 2670 + moveY}));
     stage.insert(new Q.SpecialInvincibility({ x: 600, y: 2670 + moveY}));
@@ -2708,10 +2969,10 @@ function playerColor(colorInt) {
     //When the enemies have been defeated display label
     stage.on("step",function() {
       if ((currentPlayer.p.x > 1000)  && (currentPlayer.p.x < 1300) && (currentPlayer.p.y < 190 + moveY) && !bossInserted) {
-        stage.insert(new Q.Boss({ x: 1300, y: -600 + moveY}));
-        if(audioOn){Q.audio.play("doorClose.mp3");}
-        stage.insert(new Q.bossDoor({ x: 1136, y: 300 + moveY}));
-        bossInserted = true;
+        if (!bossReadied) {
+          socket.emit('boss ready');
+          bossReadied = true;
+        }
       }
 
       var bigRoomBool = false;
@@ -2754,7 +3015,7 @@ function playerColor(colorInt) {
         if(audioOn){Q.audio.play("success.mp3");}
         Q.clearStages();
         Q.stageScene("endGame",1, { label: "You Win!" }); 
-      } else if(Q("Player").length == 0 && Q.stage(1)) { 
+      } else if(Q("Player").length == 0 && Q.stage(1) && Q("OtherPlayer1").length == 0) { 
         Q.audio.stop();
         if(audioOn){Q.audio.play("youLose.mp3");}
         Q.clearStages();
