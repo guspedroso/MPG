@@ -3037,16 +3037,20 @@ function playerColor(colorInt) {
     
     //Insert the enemies
     var bigRoomWave = setInterval(function() {
-      enemiesInBigRoom.push(stage.insert(new Q.Enemy({ x: 4000, y: 800 + moveY})))}, 250);
+      enemyOne = stage.insert(new Q.Enemy({ x: 4000, y: 800 + moveY}));
+      enemiesInBigRoom.push(enemyOne)}, 250);
 
     var topRoomWave = setInterval(function() {
-      enemiesInOtherRooms.push(stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY})))}, 1000);
+      enemyOne = stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY}));
+      enemiesInOtherRooms.push(enemyOne)}, 1000);
 
     var leftRoomWave = setInterval(function() {
-      enemiesInOtherRooms.push(stage.insert(new Q.Enemy({ x: 3700, y: 2000 + moveY})))}, 1000);
+      enemyOne = stage.insert(new Q.Enemy({ x: 3700, y: 2000 + moveY}));
+      enemiesInOtherRooms.push(enemyOne)}, 1000);
 
     var bottomRoomWave = setInterval(function() {
-      enemiesInOtherRooms.push(stage.insert(new Q.Enemy({ x: 3700, y: 1400 + moveY})))}, 1000);
+      enemyOne = stage.insert(new Q.Enemy({ x: 3700, y: 1400 + moveY}));
+      enemiesInOtherRooms.push(enemyOne)}, 1000);
 
     setTimeout(function() { 
       clearInterval(bigRoomWave),
@@ -3055,7 +3059,7 @@ function playerColor(colorInt) {
       clearInterval(bottomRoomWave),
       finishedLoadingEnemies = true}, 11000);
     
-    enemyOne = stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
+    //enemyOne = stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
    
     //Set viewport to follow player
     stage.add("viewport").follow(currentPlayer);
