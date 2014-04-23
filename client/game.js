@@ -1697,22 +1697,30 @@ function playerColor(colorInt) {
       if (player) {
         if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y < p.y && !player.p.invisible)) {
           p.direction = "up";
-          this.fire();
+          if ((p.y - player.p.y) < 400) {
+            this.fire();
+          }
           //socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "up" });
         }
         else if ((player.p.x + player.p.w > p.x && player.p.x - player.p.w < p.x && player.p.y > p.y && !player.p.invisible)) {
           p.direction = "down";
-          this.fire();
+          if ((p.y - player.p.y) < 400) {
+            this.fire();
+          }
           //socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "down" });
         }
         else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x < p.x && !player.p.invisible)) {
           p.direction = "left";
-          this.fire();
+          if ((p.x - player.p.x) < 400) {
+            this.fire();
+          }
           //socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "left" });
         }
         else if ((player.p.y + player.p.w > p.y && player.p.y - player.p.w < p.y && player.p.x > p.x && !player.p.invisible)) {
           p.direction = "right";
-          this.fire();
+          if ((player.p.x - p.x) < 400) {
+            this.fire();
+          }
         //	socket.emit('fire enemy bullet', { px: p.x, py: p.y, po: "right" });
         }
 			}
@@ -1933,6 +1941,7 @@ function playerColor(colorInt) {
     blue_stand_front: {frames:[27+75], rate: 1/5},
     blue_stand_back: {frames:[39+75], rate: 1/5},
     blue_die:{frames:[49+75], rate: 1/5},
+
   });
 
   //Create the player object
@@ -2535,6 +2544,7 @@ function playerColor(colorInt) {
         keys: 0,
         canFire: true,
         beenHit: false,
+        animating: false,
         invisible: false,
         enemiesKilled: 0,
         specialBullets: 0,
@@ -2631,6 +2641,7 @@ function playerColor(colorInt) {
     
     //step function for controlling how this sprite will move
     animate: function(po, pf) {
+      var animating = this.p.animating;
       //Grab the input and determine which animation to play
       if(po == "right") {
         //set the direction of the player depending on the input
@@ -2639,60 +2650,139 @@ function playerColor(colorInt) {
         //play the fire animation if input reads that the player is firing,
         //else just play the running animation
         if (pf == "true") {
-          this.play(this.p.playerColor + "_fire_right_running");
+          if (!animating)
+          {
+            animating = true;
+            this.play(this.p.playerColor + "_fire_right_running");
+            setTimeout(function(){animating = false}, 10000);
+          }
         }
          else {
-            this.play(this.p.playerColor + "_run_right");
+            if (!animating)
+            {
+              animating = true;
+              this.play(this.p.playerColor + "_run_right");
+              setTimeout(function(){animating = false}, 10000);
+            }
         }
       } else if (po == "left") {
         this.p.direction = "left";
         if (pf == "true") {
-          this.play(this.p.playerColor + "_fire_left_running")
+          if (!animating)
+          {
+            animating = true;
+            this.play(this.p.playerColor + "_fire_left_running");
+            setTimeout(function(){animating = false}, 10000);
+          }
         }
         else {
-          this.play(this.p.playerColor + "_run_left");
+          if (!animating)
+          {
+            animating = true;
+            this.play(this.p.playerColor + "_run_left");
+            setTimeout(function(){animating = false}, 10000);
+          }
         }
       }
       else if (po == "up") {
         this.p.direction = "up";
         if (pf == "true") {
-          this.play(this.p.playerColor + "_fire_back_running")
+          if (!animating)
+          {
+            animating = true;
+            this.play(this.p.playerColor + "_fire_back_running");
+            setTimeout(function(){animating = false}, 10000);
+          }
         }
         else {
-          this.play(this.p.playerColor + "_run_back");
+          if (!animating)
+          {
+            animating = true;
+            this.play(this.p.playerColor + "_run_back");
+            setTimeout(function(){animating = false}, 10000);
+          }
         }
       } else if (po == "down") {
         this.p.direction = "down";
         if (pf == "true") {
-          this.play(this.p.playerColor + "_fire_front_running")
+          if (!animating)
+          {
+            animating = true;
+            this.play(this.p.playerColor + "_fire_front_running");
+            setTimeout(function(){animating = false}, 10000);
+          }
         }
         else {
-          this.play(this.p.playerColor + "_run_front");
+          if (!animating)
+          {
+            animating = true;
+            this.play(this.p.playerColor + "_run_front");
+            setTimeout(function(){animating = false}, 10000);
+          }
         }
       }
       else {
         if (pf == "true") {
           if (this.p.direction == "right") {
-            this.play(this.p.playerColor + "_fire_standing_right"); 
+            if (!animating)
+            {
+              animating = true;
+              this.play(this.p.playerColor + "_fire_standing_right"); 
+              setTimeout(function(){animating = false}, 10000);
+            }
           } else if (this.p.direction == "left") {
-            this.play(this.p.playerColor + "_fire_standing_left");
+            if (!animating)
+            {
+              animating = true;
+              this.play(this.p.playerColor + "_fire_standing_left");
+              setTimeout(function(){animating = false}, 10000);
+            }
           } else if (this.p.direction == "up") {
-            this.play(this.p.playerColor + "_fire_standing_back");
+            if (!animating)
+            {
+              animating = true;
+              this.play(this.p.playerColor + "_fire_standing_back");
+              setTimeout(function(){animating = false}, 10000);
+            }
           } else if (this.p.direction == "down") {
-            this.play(this.p.playerColor + "_fire_standing_front");
+            if (!animating)
+            {
+              animating = true;
+              this.play(this.p.playerColor + "_fire_standing_front");
+              setTimeout(function(){animating = false}, 10000);
+            }
           }
           
         }
         else {
-          var color = this.p.playerColor;
           if (this.p.direction == "right") {
-            setTimeout(this.play(color + "_stand_right"),1000);
+            if (!animating)
+            {
+              animating = true;
+              this.play(this.p.playerColor + "_stand_right");
+              setTimeout(function(){animating = false}, 10000);
+            }
           } else if (this.p.direction == "left") {
-            setTimeout(this.play(color + "_stand_left"),1000);
+            if (!animating)
+            {
+              animating = true;
+              this.play(this.p.playerColor + "_stand_left");
+              setTimeout(function(){animating = false}, 10000);
+            }
           } else if (this.p.direction == "up") {
-            setTimeout(this.play(color + "_stand_back"),1000);
+            if (!animating)
+            {
+              animating = true;
+              this.play(this.p.playerColor + "_stand_back");
+              setTimeout(function(){animating = false}, 10000);
+            }
           } else if (this.p.direction == "down") {
-            setTimeout(this.play(color + "_stand_front"),1000);
+            if (!animating)
+            {
+              animating = true;
+              this.play(this.p.playerColor + "_stand_front");
+              setTimeout(function(){animating = false}, 10000);
+            }
           }
         }
       }
@@ -2929,7 +3019,7 @@ function playerColor(colorInt) {
     stage.insert(new Q.Key({ x: 100, y: 100 + moveY})); //top room
 
     //insert golden key and specials 
-    stage.insert(new Q.goldenKey({ x: 1300, y: 1400 + moveY}));
+    stage.insert(new Q.goldenKey({ x: 150, y: 2670 + moveY}));
     stage.insert(new Q.SpecialSpeed({ x: 400, y: 2670 + moveY}));
     stage.insert(new Q.SpecialGun({ x: 500, y: 2670 + moveY}));
     stage.insert(new Q.SpecialInvincibility({ x: 600, y: 2670 + moveY}));
@@ -2944,7 +3034,7 @@ function playerColor(colorInt) {
 
     //insert the player
     currentPlayer = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
-    /*
+    
     //Insert the enemies
     var bigRoomWave = setInterval(function() {
       enemiesInBigRoom.push(stage.insert(new Q.Enemy({ x: 4000, y: 800 + moveY})))}, 250);
@@ -2964,7 +3054,7 @@ function playerColor(colorInt) {
       clearInterval(leftRoomWave),
       clearInterval(bottomRoomWave),
       finishedLoadingEnemies = true}, 11000);
-    */
+    
     enemyOne = stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
    
     //Set viewport to follow player
