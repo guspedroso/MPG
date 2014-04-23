@@ -82,6 +82,8 @@ function socketDisconnect(data) {
 	var firstEnemy = findEnemy(data.pid);
 	allEnemies.splice(allEnemies.indexOf(firstEnemy), 1);
 	firstEnemy.destroy();
+	
+	console.log(allEnemies.length);
 };
 
 /* 
@@ -190,7 +192,7 @@ function moveBoss(data) {
 	// if (bossMove) {
    //console.log(data.pid + " " + data.px + " " + data.py);
     boss[0].set({x: data.bx, y: data.by});
-    // bossMove.animate(data.po, "false");
+    bossMove.animate(data.po, "false");
 	// }
 	
 };
@@ -227,6 +229,7 @@ function drawEnemyBullet(data) {
 
 function drawBossBullet(data) {
   boss[0].fire(data.bo);
+  boss[0].animate(data.bo, "true");
 };
 
 /*
@@ -1057,12 +1060,12 @@ function playerColor(colorInt) {
 
   //Set up the animations for the boss, reading frames from boss in sprites.png
   Q.animations("boss", {
-    boss_fire_right_running: {frames:[15,16], rate: 1/10},
-    boss_fire_left_running: {frames:[8,17], rate: 1/10},
+    boss_fire_right_running: {frames:[15,16], rate: 1/3},
+    boss_fire_left_running: {frames:[8,17], rate: 1/3},
     boss_fire_front_running: {frames:[0,1], rate: 1/3},
     boss_fire_back_running: {frames:[13,14], rate: 1/3},
-    boss_run_right: {frames:[4,5], rate: 1/10},
-    boss_run_left: {frames:[6,7], rate: 1/10},
+    boss_run_right: {frames:[4,5], rate: 1/3},
+    boss_run_left: {frames:[6,7], rate: 1/3},
     boss_run_front: {frames:[2,3], rate: 1/3},
     boss_run_back: {frames:[11,12], rate: 1/3},
   });
@@ -1324,42 +1327,43 @@ function playerColor(colorInt) {
       //this.on("step",this,"step");
      // this.on('hit',this,"changeDirection");
      // this.on("step",this,"tryToFire");
-   //   this.on("step",this,"animate")
+      this.on("step",this,"animate")
     },
 
-    animate: function() {
+    animate: function(po, firing) {
+    firing = false;
       var p = this.p;
-      if (p.direction == "right") {
-        if (!p.canFire) {
-          this.play("enemy_fire_right_running");
+      if (po == "right") {
+        if (!firing) {
+          this.play("boss_fire_right_running");
         }
         else {
-          this.play("enemy_run_right")
+          this.play("boss_run_right")
         }
         
       }
-      else if (p.direction == "left") {
-        if (!p.canFire) {
-          this.play("enemy_fire_left_running");
+      else if (po == "left") {
+        if (!firing) {
+          this.play("boss_fire_left_running");
         }
         else {
-          this.play("enemy_run_left")
+          this.play("boss_run_left")
         }
       }
-      else if (p.direction == "up") {
-        if (!p.canFire) {
-          this.play("enemy_fire_back_running");
+      else if (po == "up") {
+        if (!firing) {
+          this.play("boss_fire_back_running");
         }
         else {
-          this.play("enemy_run_back")
+          this.play("boss_run_back")
         }
       }
-      else if (p.direction == "down" && !p.canFire) {
-        if (!p.canFire) {
-          this.play("enemy_fire_front_running");
+      else if (po == "down" && !p.canFire) {
+        if (!firing) {
+          this.play("boss_fire_front_running");
         }
         else {
-          this.play("enemy_run_front")
+          this.play("boss_run_front")
         }
       }
     },
@@ -2060,7 +2064,7 @@ function playerColor(colorInt) {
         this.stage.insert(ragdoll);
         
         this.destroy();
-        setTimeout(function() { ragdoll.destroy() }, 5000);
+        setTimeout(function() { ragdoll.destroy() }, 3000);
         socket.emit('death', { px: this.p.x, py: this.p.y, regKey: this.p.keys, blueKey: this.p.hasBlueKey, goldenKey: this.p.hasGoldenKey });
       }
     },
@@ -2547,7 +2551,7 @@ function playerColor(colorInt) {
       ragdoll.play(this.p.playerColor + "_die");
       this.stage.insert(ragdoll);
       this.destroy();
-      setTimeout(function() { ragdoll.destroy() }, 5000);
+      setTimeout(function() { ragdoll.destroy() }, 3000);
     },
     
     
