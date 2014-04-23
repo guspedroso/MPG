@@ -83,7 +83,7 @@ function socketDisconnect(data) {
 	allEnemies.splice(allEnemies.indexOf(firstEnemy), 1);
 	firstEnemy.destroy();
 	
-	console.log(allEnemies.length);
+	//console.log(allEnemies.length);
 };
 
 /* 
@@ -109,7 +109,7 @@ function addNewPlayer(data) {
     newPlayerFrame = 77;
   }
   var newPlayer = new Q.OtherPlayer1({ x: data.x, y: data.y, pid: data.pid, playerColor: newPlayerColor, frame: newPlayerFrame});
-  console.log("new player " + data.x + " " + data.y);
+  //console.log("new player " + data.x + " " + data.y);
   Q.stage().insert(newPlayer);
 	allPlayers.push(newPlayer);
   
@@ -363,12 +363,12 @@ function loadCoOp() {
   var px = currentPlayer.p.x;
   var py = currentPlayer.p.y;
   //sends new player request to server
-  console.log(px + " " + py);
+  //console.log(px + " " + py);
   socket.emit('new player', { x: px, y: py });
 	
 	var e1x = enemyOne.p.x;
 	var e1y = enemyOne.p.y;
-	console.log("Enemy: " + e1x + " " + e1y);
+	//console.log("Enemy: " + e1x + " " + e1y);
 	socket.emit('new enemy', { x: e1x, y: e1y, t: "enemy"});
 	
 	// if(currentPlayer.p.playerColor == "blue"){
@@ -1076,7 +1076,7 @@ function playerColor(colorInt) {
       this._super(p,{
         sheet:"boss",
         sprite:"boss",
-        life: 10, //change the life to something reasonable once we get things going
+        life: 20, //change the life to something reasonable once we get things going
         bulletSpeed: 600,
         speed: 350,
         direction: 'left',
@@ -1312,7 +1312,7 @@ function playerColor(colorInt) {
       this._super(p,{
         sheet:"boss",
         sprite:"boss",
-        life: 10, //change the life to something reasonable once we get things going
+        life: 20, //change the life to something reasonable once we get things going
         bulletSpeed: 600,
         speed: 350,
         direction: 'left',
@@ -2652,7 +2652,8 @@ function playerColor(colorInt) {
         if (pf == "true") {
           if (!animating)
           {
-            animating = true;
+            //console.log("fire_right_running");
+            //animating = true;
             this.play(this.p.playerColor + "_fire_right_running");
             setTimeout(function(){animating = false}, 10000);
           }
@@ -2660,7 +2661,8 @@ function playerColor(colorInt) {
          else {
             if (!animating)
             {
-              animating = true;
+              //console.log("run_right");
+              //animating = true;
               this.play(this.p.playerColor + "_run_right");
               setTimeout(function(){animating = false}, 10000);
             }
@@ -2670,7 +2672,8 @@ function playerColor(colorInt) {
         if (pf == "true") {
           if (!animating)
           {
-            animating = true;
+            //console.log("fire_left_running");
+            //animating = true;
             this.play(this.p.playerColor + "_fire_left_running");
             setTimeout(function(){animating = false}, 10000);
           }
@@ -2678,7 +2681,8 @@ function playerColor(colorInt) {
         else {
           if (!animating)
           {
-            animating = true;
+            //console.log("run_left");
+            //animating = true;
             this.play(this.p.playerColor + "_run_left");
             setTimeout(function(){animating = false}, 10000);
           }
@@ -2689,7 +2693,8 @@ function playerColor(colorInt) {
         if (pf == "true") {
           if (!animating)
           {
-            animating = true;
+            //console.log("fire_back_running");
+            //animating = true;
             this.play(this.p.playerColor + "_fire_back_running");
             setTimeout(function(){animating = false}, 10000);
           }
@@ -2697,7 +2702,8 @@ function playerColor(colorInt) {
         else {
           if (!animating)
           {
-            animating = true;
+            //console.log("run_back");
+            //animating = true;
             this.play(this.p.playerColor + "_run_back");
             setTimeout(function(){animating = false}, 10000);
           }
@@ -2707,7 +2713,8 @@ function playerColor(colorInt) {
         if (pf == "true") {
           if (!animating)
           {
-            animating = true;
+            //console.log("fire_front_running");
+            //animating = true;
             this.play(this.p.playerColor + "_fire_front_running");
             setTimeout(function(){animating = false}, 10000);
           }
@@ -2715,7 +2722,8 @@ function playerColor(colorInt) {
         else {
           if (!animating)
           {
-            animating = true;
+            //console.log("run_front");
+            //animating = true;
             this.play(this.p.playerColor + "_run_front");
             setTimeout(function(){animating = false}, 10000);
           }
@@ -2726,28 +2734,32 @@ function playerColor(colorInt) {
           if (this.p.direction == "right") {
             if (!animating)
             {
-              animating = true;
+              //console.log("fire_standing_right");
+              //animating = true;
               this.play(this.p.playerColor + "_fire_standing_right"); 
               setTimeout(function(){animating = false}, 10000);
             }
           } else if (this.p.direction == "left") {
             if (!animating)
             {
-              animating = true;
+              //console.log("fire_standing_left");
+              //animating = true;
               this.play(this.p.playerColor + "_fire_standing_left");
               setTimeout(function(){animating = false}, 10000);
             }
           } else if (this.p.direction == "up") {
             if (!animating)
             {
-              animating = true;
+              //console.log("fire_standing_back");
+              //animating = true;
               this.play(this.p.playerColor + "_fire_standing_back");
               setTimeout(function(){animating = false}, 10000);
             }
           } else if (this.p.direction == "down") {
             if (!animating)
             {
-              animating = true;
+              //console.log("fire_standing_front");
+              //animating = true;
               this.play(this.p.playerColor + "_fire_standing_front");
               setTimeout(function(){animating = false}, 10000);
             }
@@ -2758,28 +2770,32 @@ function playerColor(colorInt) {
           if (this.p.direction == "right") {
             if (!animating)
             {
-              animating = true;
+              //console.log("stand_right");
+              //animating = true;
               this.play(this.p.playerColor + "_stand_right");
               setTimeout(function(){animating = false}, 10000);
             }
           } else if (this.p.direction == "left") {
             if (!animating)
             {
-              animating = true;
+              //console.log("stand_left");
+              //animating = true;
               this.play(this.p.playerColor + "_stand_left");
               setTimeout(function(){animating = false}, 10000);
             }
           } else if (this.p.direction == "up") {
             if (!animating)
             {
-              animating = true;
+              //console.log("_stand_back");
+              //animating = true;
               this.play(this.p.playerColor + "_stand_back");
               setTimeout(function(){animating = false}, 10000);
             }
           } else if (this.p.direction == "down") {
             if (!animating)
             {
-              animating = true;
+              //console.log("stand_front");
+              //animating = true;
               this.play(this.p.playerColor + "_stand_front");
               setTimeout(function(){animating = false}, 10000);
             }
@@ -3013,6 +3029,7 @@ function playerColor(colorInt) {
 
     //insert the keys
     stage.insert(new Q.Key({ x: 1300, y: 1350 + moveY})); //spawn room
+    stage.insert(new Q.goldenKey({ x: 1300, y: 1350 + moveY})); //spawn room
     stage.insert(new Q.Key({ x: 2200, y: 1250 + moveY})); //right room
     stage.insert(new Q.Key({ x: 4250, y: 1900 + moveY})); //left room
     stage.insert(new Q.Key({ x: 4250, y: 1200 + moveY})); //bottom room
@@ -3034,23 +3051,23 @@ function playerColor(colorInt) {
 
     //insert the player
     currentPlayer = stage.insert(new Q.Player({ x: 1300, y: 1200 + moveY}));
-    
+ 
     //Insert the enemies
     var bigRoomWave = setInterval(function() {
       enemyOne = stage.insert(new Q.Enemy({ x: 4000, y: 800 + moveY}));
-      enemiesInBigRoom.push(enemyOne)}, 250);
+      enemiesInBigRoom.push(enemyOne)}, 1000);
 
     var topRoomWave = setInterval(function() {
       enemyOne = stage.insert(new Q.Enemy({ x: 200, y: 200 + moveY}));
-      enemiesInOtherRooms.push(enemyOne)}, 1000);
+      enemiesInOtherRooms.push(enemyOne)}, 2000);
 
     var leftRoomWave = setInterval(function() {
       enemyOne = stage.insert(new Q.Enemy({ x: 3700, y: 2000 + moveY}));
-      enemiesInOtherRooms.push(enemyOne)}, 1000);
+      enemiesInOtherRooms.push(enemyOne)}, 2000);
 
     var bottomRoomWave = setInterval(function() {
       enemyOne = stage.insert(new Q.Enemy({ x: 3700, y: 1400 + moveY}));
-      enemiesInOtherRooms.push(enemyOne)}, 1000);
+      enemiesInOtherRooms.push(enemyOne)}, 2000);
 
     setTimeout(function() { 
       clearInterval(bigRoomWave),
@@ -3058,7 +3075,7 @@ function playerColor(colorInt) {
       clearInterval(leftRoomWave),
       clearInterval(bottomRoomWave),
       finishedLoadingEnemies = true}, 11000);
-    
+  
     //enemyOne = stage.insert(new Q.Enemy({ x: 1350, y: 1800 + moveY})); //bottom
    
     //Set viewport to follow player
